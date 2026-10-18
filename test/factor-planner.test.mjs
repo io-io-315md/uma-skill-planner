@@ -92,5 +92,10 @@ test('834件の画像がそれぞれのIDのローカルPNGに対応する',()=>
   assert.equal(item.image,`assets/${kind}/${item.id}.png`);
   const bytes=fs.readFileSync(new URL('../dist/'+item.image,import.meta.url));
   assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  if(kind==='characters'){
+    assert.ok(Number.isInteger(item.raceDressId));
+    assert.equal(item.imageSource,`https://uma-cdn.pure-db.com/img/trained_charas/trained_${item.characterId}_${String(item.raceDressId).padStart(6,'0')}_01.png`);
+    assert.equal(bytes.readUInt32BE(16),256);assert.equal(bytes.readUInt32BE(20),256);
+  }
  }
 });

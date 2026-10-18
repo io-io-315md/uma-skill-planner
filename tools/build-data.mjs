@@ -17,7 +17,8 @@ const characters = read('gametora-character-cards.json').filter(c => c.release <
   id: c.card_id, characterId: c.char_id, name: `${c.title_jp ?? ''}${c.name_jp}`, characterName: c.name_jp, title: c.title_jp ?? '',
   aptitude: c.aptitude, innate: c.skills_innate ?? [], awakening: c.skills_awakening ?? [], eventSkills: c.skills_event ?? [], unique: c.skills_unique ?? [],
   evolutions: c.skills_evo ?? [], source: `https://gametora.com/ja/umamusume/characters/${c.url_name}`,
-  image: `assets/characters/${c.card_id}.png`, imageSource: `https://gametora.com/images/umamusume/characters/thumb/chara_stand_${c.char_id}_${c.card_id}.png`
+  raceDressId: c.costume,
+  image: `assets/characters/${c.card_id}.png`, imageSource: `https://uma-cdn.pure-db.com/img/trained_charas/trained_${c.char_id}_${String(c.costume).padStart(6,'0')}_01.png`
 }));
 const curatedEvents = read('events.json').events;
 const supports = read('gametora-support-cards.json').filter(c => c.release <= '2026-10-18').map(c => {
@@ -35,7 +36,7 @@ const supports = read('gametora-support-cards.json').filter(c => c.release <= '2
 });
 // ☆1/2固有と☆3固有で継承版IDを共有する場合は、後の上位名称を採用する。
 const uniqueSkills = [...new Map(skills.map(s => [s.id,s])).values()];
-const catalog = { retrievedAt: '2026-10-18', sources: { database: 'https://gametora.com/data/manifests/umamusume.json', events: 'https://github.com/Tsuyuchan-jp/umamusume-data' }, skills: uniqueSkills, characters, supports };
+const catalog = { retrievedAt: '2026-10-18', sources: { database: 'https://gametora.com/data/manifests/umamusume.json', events: 'https://github.com/Tsuyuchan-jp/umamusume-data', artwork: { characters:'https://uma.pure-db.com/ja-jp/', supports:'https://gametora.com/ja/umamusume/supports' } }, skills: uniqueSkills, characters, supports };
 fs.mkdirSync(path.join(root, 'dist', 'data'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist', 'data', 'catalog.json'), JSON.stringify(catalog));
 console.log(`Catalog: ${characters.length} characters, ${supports.length} supports, ${uniqueSkills.length} skills; ${supports.filter(s => s.events.length).length} cards with detailed event choices.`);

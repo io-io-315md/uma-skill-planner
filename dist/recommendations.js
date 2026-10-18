@@ -16,6 +16,7 @@ export const SOURCES = {
   shinzui: { name: 'ウマ娘ラボ｜真髄スキルの性能・優先度', url: 'https://umamusumelabo.com/beginner/sinzui-skill-kaisetu', kind: 'スキル解説・2024年' },
   shinzuiBody: { name: 'GameWith｜レースの真髄・体', url: 'https://gamewith.jp/uma-musume/article/show/374185', kind: 'スキル条件・入手経路' },
   longSkills: { name: 'おろぶろぐ｜長距離LoHスキル解説', url: 'https://www.orooroktgameblog.net/entry/2025/07/29/212054', kind: '長距離の参考・2025年札幌2600m' },
+  characterIcons: { name: 'ウマ娘DB｜衣装別のゲーム内顔アイコン', url: 'https://uma.pure-db.com/ja-jp/', kind: 'キャラクター画像' },
   finePower: { name: 'ウマ娘ラボ｜パワーファインの金択・白択', url: 'https://umamusumelabo.com/chara_support/ssr-finemotion-power', kind: '本育成と因子周回の排他イベント択' },
   factorFarming: { name: 'Game8｜因子周回の手順', url: 'https://game8.jp/umamusume/460250', kind: '白因子・固有因子・上位スキルの習得' },
   ura: { name: 'GameWith｜URAの真髄スキル取得方法', url: 'https://gamewith.jp/uma-musume/article/show/376170', kind: 'シナリオからの因子用スキル取得' }
