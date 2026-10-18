@@ -1,0 +1,8 @@
+node_modules/
+.openai/
+research/
+artifacts/
+tools/github-publish.mjs
+*.log
+.DS_Store
+Thumbs.db

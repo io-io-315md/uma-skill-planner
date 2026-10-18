@@ -1,0 +1,15 @@
+{
+  "name": "uma-skill-planner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ウマ娘のコース別スキル・継承・白因子プランナー",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test",
+    "check": "node --check dist/app.js && node --check dist/engine.js && node --check dist/recommendations.js && node tools/validate-data.mjs",
+    "data:build": "node tools/build-data.mjs",
+    "data:update": "node tools/update-data.mjs"
+  },
+  "engines": { "node": ">=22" }
+}

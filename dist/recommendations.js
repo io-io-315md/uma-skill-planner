@@ -1,0 +1,78 @@
+export const VERIFIED_AT = '2026-10-18';
+export const SOURCES = {
+  official: { name: 'Cygames｜10月〜3月 対戦レースイベント', url: 'https://dmg.umamusume.jp/news/detail/?id=3483', kind: '公式発表' },
+  november: { name: 'ウマ娘ラボ｜2026年11月 京都3000m', url: 'https://umamusumelabo.com/event/loh/loh-kyoto3000-202611', kind: '攻略・評価' },
+  november2: { name: '神ゲー攻略｜11月LoH攻略', url: 'https://kamigame.jp/umamusume/page/438640407664972073.html', kind: '攻略・評価' },
+  december: { name: 'GameWith｜2026年12月 チャンミ長距離', url: 'https://gamewith.jp/uma-musume/article/show/578925', kind: '攻略・評価' },
+  december2: { name: '神ゲー攻略｜12月チャンミ攻略', url: 'https://kamigame.jp/umamusume/page/443708416242747935.html', kind: '攻略・評価' },
+  database: { name: 'GameTora｜スキル・育成キャラ・サポートDB', url: 'https://gametora.com/ja/umamusume', kind: '非公式データベース' },
+  events: { name: 'Tsuyuchan-jp｜イベント選択肢データ', url: 'https://github.com/Tsuyuchan-jp/umamusume-data', kind: '非公式データ' },
+  inheritance: { name: 'GameWith｜継承進化スキル', url: 'https://gamewith.jp/uma-musume/article/show/574331', kind: '継承条件' },
+  renmen: { name: 'U-tools｜連綿', url: 'https://xn--gck1f423k.xn--1bvt37a.tools/skills/204622', kind: 'スキル条件' }
+};
+
+export const COURSES = [
+  { id: '2026-11-loh', month: '11', year: '2026', date: '11月下旬', type: 'LoH', title: 'リーグ オブ ヒーローズ', venue: '京都', surface: '芝', distance: 3000, distanceType: '長距離', turn: '右・外', season: '秋', weather: 'ランダム', going: 'ランダム', time: '昼', runners: 12, confirmed: true, source: 'november', summary: '直線での終盤加速を軸に、12人立ての順位条件を確認。天候・バ場は固定しない。', caution: 'コーナーで発動する終盤加速は遅れやすく、直線のラストスパート加速を先に検討します。' },
+  { id: '2026-12-cm', month: '12', year: '2026', date: '12月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング LONG', venue: '中山', surface: '芝', distance: 2500, distanceType: '長距離', turn: '右・内', season: '冬', weather: '晴', going: '良', time: '昼', runners: 9, confirmed: true, source: 'december', summary: '冬・晴・良の固定条件。直線の終盤加速と、残り400m付近の速度を整理。', caution: '超長距離回復は3000m以上限定で対象外。コーナー加速は有効ですが、最速加速より優先度を下げて検討します。' },
+  { id: '2027-01-cm', month: '01', year: '2027', date: '1月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング CLASSIC', surface: '芝', distanceType: '中距離', confirmed: false },
+  { id: '2027-02-loh', month: '02', year: '2027', date: '2月中旬', type: 'LoH', title: 'リーグ オブ ヒーローズ', surface: 'ダート', distanceType: '中距離', confirmed: false },
+  { id: '2027-03-cm', month: '03', year: '2027', date: '3月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング MILE', surface: '芝', distanceType: 'マイル', confirmed: false, rule: 'デバフなし' }
+];
+export const STYLES = ['逃げ', '先行', '差し', '追込'];
+export const CATEGORIES = ['加速', '速度', '緑スキル', '回復', '継承'];
+
+const rec = (name, category, priority, reason, options = {}) => ({ name, category, priority, reason, courses: ['2026-11-loh', '2026-12-cm'], styles: STYLES, sources: ['november', 'december', 'database'], ...options });
+const inherited = (name, priority, reason, options = {}) => rec(name, '継承', priority, reason, { inherited: true, ...options });
+
+// 優先度は資料をもとにした編集上の分類。勝率や効果量の計算結果ではない。
+export const RECOMMENDATIONS = [
+  rec('迷いなし', '加速', 1, '直線のラストスパートで1〜3位。終盤入りが直線の両コースで主加速候補。', { styles: ['逃げ'], gold: '万里一空' }),
+  rec('勇気の一歩', '加速', 1, '直線のラストスパートで発動。順位条件がなく、先行の主加速候補。', { styles: ['先行'], gold: 'ショーダウン' }),
+  rec('本領発揮', '加速', 1, '終盤目前に先頭または先頭から4バ身以内が条件。前に付ける展開を想定して採用。', { styles: ['先行'], gold: '怪物' }),
+  rec('影より速く', '加速', 1, '直線のラストスパートで発動。順位条件がなく、差しの主加速候補。', { styles: ['差し'], gold: '絶塵' }),
+  rec('がむしゃら', '加速', 1, '中団以降のラストスパート加速。持久力を使うため、回復・スタミナと併せて判断。', { styles: ['差し'], gold: '無我夢中', courseNotes: { '2026-11-loh': '12人立てでは5〜12位が条件。', '2026-12-cm': '9人立てでは4〜9位が条件。' } }),
+  rec('直線一気', '加速', 1, '直線のラストスパートで発動。両コースとも追込の主加速候補。', { styles: ['追込'], gold: '迫る影' }),
+  rec('垂れウマ回避', '加速', 3, 'ラストスパートで前を塞がれる条件の補助加速。主加速との重複を見て採用。', { styles: ['先行', '差し', '追込'] }),
+  rec('覚悟を決めて', '加速', 3, '終盤始めの早い区間で前方にいる場合の補助加速。', { styles: ['逃げ'] }),
+  rec('狙いを定めて', '加速', 3, '終盤始めの早い区間の前方条件。主加速に追加する候補。', { styles: ['先行'], gold: '一点集中' }),
+  rec('ここ一番', '加速', 3, '終盤始めの早い区間で中団以降にいる場合の補助加速。', { styles: ['差し'], gold: '一世一代' }),
+  rec('好機を捉えて', '加速', 3, '終盤始めの早い区間で中団以降にいる場合の補助加速。', { styles: ['追込'], gold: '千載一遇' }),
+  rec('登山家', '加速', 3, '京都の上り坂で発動する補助加速。発動位置によって働きが変わる。', { courses: ['2026-11-loh'], sources: ['november2', 'database'] }),
+  rec('右回り○', '緑スキル', 1, '右回りの固定条件に一致。スピードを補う緑スキル。'),
+  rec('秋ウマ娘○', '緑スキル', 1, '11月の季節「秋」に一致。スピードを補う緑スキル。', { courses: ['2026-11-loh'] }),
+  rec('冬ウマ娘○', '緑スキル', 1, '12月の季節「冬」に一致。スピードを補う緑スキル。', { courses: ['2026-12-cm'] }),
+  rec('京都レース場○', '緑スキル', 3, '京都レース場に一致。スタミナを補う候補。', { courses: ['2026-11-loh'] }),
+  rec('中山レース場○', '緑スキル', 3, '中山レース場に一致。スタミナを補う候補。', { courses: ['2026-12-cm'] }),
+  rec('非根幹距離○', '緑スキル', 3, '3000m・2500mはいずれも非根幹距離。スタミナを補う候補。'),
+  rec('良バ場○', '緑スキル', 3, '12月の固定条件「良」に一致。パワーを補う候補。', { courses: ['2026-12-cm'] }),
+  rec('晴れの日○', '緑スキル', 3, '12月の固定条件「晴」に一致。根性を補う候補。', { courses: ['2026-12-cm'] }),
+  rec('ウマ好み', '速度', 2, '近くに複数のウマ娘がいる条件。序盤の位置取り用に検討。', { styles: ['先行', '差し', '追込'] }),
+  rec('長距離直線○', '速度', 2, '長距離条件に一致する直線速度。発動位置はランダム。'),
+  rec('長距離コーナー○', '速度', 2, '長距離条件に一致するコーナー速度。発動位置はランダム。'),
+  ...STYLES.flatMap(style => [
+    rec(`${style}直線○`, '速度', 2, `${style}で使える直線速度。コースと脚質が一致する基礎候補。`, { styles: [style] }),
+    rec(`${style}コーナー○`, '速度', 2, `${style}で使えるコーナー速度。コースと脚質が一致する基礎候補。`, { styles: [style] })
+  ]),
+  rec('尻尾上がり', '速度', 2, '中盤にスキルを3回発動すると速度上昇。中盤の発動構成を確認。'),
+  rec('連綿', '速度', 2, '中盤の速度スキル。継承スキル3個以上で効果が増えるため、継承構成と併せて準備。', { sources: ['december', 'renmen', 'database'] }),
+  rec('余勢を駆って', '速度', 3, '京都の上り坂で使う先行の速度候補。坂での発動位置は一定ではない。', { styles: ['先行'], courses: ['2026-11-loh'], sources: ['november2', 'database'] }),
+  rec('十万バリキ', '速度', 3, '京都の上り坂で使う差しの速度候補。', { styles: ['差し'], courses: ['2026-11-loh'], sources: ['november2', 'database'] }),
+  rec('登竜門', '速度', 3, '京都の上り坂で使う追込の速度候補。', { styles: ['追込'], courses: ['2026-11-loh'], sources: ['november2', 'database'] }),
+  rec('コーナー回復○', '回復', 3, '回復量は最終スタミナや持久力を使うスキルによって判断。必要数はここでは断定しない。', { gold: '円弧のマエストロ' }),
+  rec('直線回復', '回復', 3, '直線での回復候補。Joy to the Worldに必要な中盤早期回復は保証しない。'),
+  rec('抜かりなし', '回復', 2, '出遅れなければ中盤始めに回復。先行のJoy to the World条件を補う候補。', { styles: ['先行'], gold: '一意専心' }),
+  rec('超長距離回復○', '回復', 3, '3000m以上限定の回復。11月京都3000mでのみ候補に含める。', { courses: ['2026-11-loh'] }),
+  rec('先駆け', '加速', 2, '逃げのスタート加速。終盤加速とは用途が異なる。', { styles: ['逃げ'], gold: '先手必勝' }),
+  rec('地固め', '加速', 2, '序盤にスキル3回発動が必要。緑スキルなどの発動構成も用意する。', { styles: ['逃げ'] }),
+  inherited('光れ！弾けろ！超新星爆発！', 1, 'エピファネイアの継承進化。後半速度と2000m以上のラストスパート加速。', { styles: ['逃げ', '先行'], evolvedInheritance: true, ownerId: 114101, sources: ['november', 'december', 'inheritance'] }),
+  inherited('黄金を訪ねて', 1, 'ステイゴールドの継承進化。後半速度と2000m以上のラストスパート加速。', { styles: ['差し', '追込'], evolvedInheritance: true, ownerId: 113501, sources: ['november', 'december', 'inheritance'] }),
+  inherited('勝ち鬨ワッショイ！', 2, '通常キタサンブラック。1〜2位のラストスパート直線加速候補。', { styles: ['逃げ'], ownerId: 106801 }),
+  inherited('Do Ya Breakin!', 3, 'ダンス衣装セイウンスカイ。1〜2位のラストスパート直線加速候補。', { styles: ['逃げ'], ownerId: 102002 }),
+  inherited('Joy to the World', 2, 'クリスマス衣装ナリタトップロード。中盤早期の回復が必要。', { ownerId: 107703, courseNotes: { '2026-11-loh': '12人立てでは2〜6位。回復の発動時期も確認。', '2026-12-cm': '9人立てでは2〜5位。回復の発動時期も確認。' } }),
+  inherited('恵福バルカローレ', 2, '正月衣装テイエムオペラオー。残り400mの先団条件。スキル7回以上発動で強化。', { ownerId: 101502 }),
+  inherited('夏空ハレーション', 2, '水着衣装アグネスタキオン。後半コーナーの好位置で速度。中山では追加効果もある。', { styles: ['逃げ', '先行', '差し'], ownerId: 103202 }),
+  inherited('威風堂々、夢錦！', 2, '総大将スペシャルウィーク。終盤最終コーナーで別スキルを発動する条件。中山で強化。', { ownerId: 100103, courses: ['2026-12-cm'] }),
+  inherited('夏雷カスケード！', 2, '水着衣装サトノクラウン。中盤前半で追い抜く条件の速度候補。', { styles: ['差し'], courses: ['2026-11-loh'] }),
+  inherited('鋭気のアレグロ', 2, 'ウインバリアシオン。残り400m。追込で中盤以降3回追い抜くと強化。', { styles: ['追込'] }),
+  inherited('Shadow Ancestress', 2, 'ハロウィン衣装エアグルーヴ。中盤後半の速度。12人立てでは1〜6位。', { courses: ['2026-11-loh'], ownerId: 101803 })
+];

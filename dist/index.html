@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#244c3b">
+  <meta name="description" content="コース、育成ウマ娘、サポート編成から、取得スキルと継承・白因子の準備を整理。">
+  <title>UMAPLAN｜コース別スキル・因子プランナー</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#results">取得候補へ移動</a>
+  <header class="header">
+    <a class="brand" href="./" aria-label="UMAPLAN ホーム"><span class="brand-icon" aria-hidden="true">U<span></span></span><span>UMA<span class="brand-light">PLAN</span><small>SKILL & FACTOR PLANNER</small></span></a>
+    <div class="header-actions"><span class="local-label"><span class="status-dot"></span>この端末に自動保存</span><button class="text-button" id="sources-button">データ・出典 <span aria-hidden="true">↗</span></button><button class="icon-button" id="help-button" aria-label="使い方">?</button></div>
+  </header>
+  <main class="workspace">
+    <div class="page-heading"><div><p class="eyebrow">RACE PREPARATION</p><h1>次のレースに、<br class="mobile-only">必要な準備を。</h1><p class="lead">コースと編成から、スキル・継承・白因子を整理。</p></div><span class="edition">2026 AUTUMN / WINTER<span>確認日 2026.10.18</span></span></div>
+    <section class="schedule-section" aria-labelledby="schedule-title"><div class="section-caption"><h2 id="schedule-title">開催スケジュール</h2><span>10月チャンミは対象外</span></div><div id="course-tabs" class="course-tabs" aria-label="開催イベント"></div></section>
+    <section id="course-banner" class="course-banner" aria-label="選択中のレース条件"></section>
+    <div class="planner-layout">
+      <aside class="setup-column" aria-label="育成条件と編成">
+        <section class="panel setup-panel"><div class="panel-heading"><span class="step">01</span><h2>育成プラン</h2><button class="small-button" id="sample-button">操作例を入力</button></div>
+          <label class="field-label" for="character-picker">育成ウマ娘 <span>衣装ごとに選択</span></label><button class="picker-button" id="character-picker"><span id="character-label">ウマ娘を選択</span><span aria-hidden="true">⌄</span></button><div id="character-note" class="field-note">キャラを選ぶと、自前の取得スキルを照合します。</div>
+          <div class="field-row"><label class="field-label" for="awakening">覚醒Lv</label><select id="awakening" aria-label="覚醒レベル"></select></div>
+          <p class="field-label">作戦</p><div class="style-buttons" id="style-buttons" aria-label="作戦"></div>
+        </section>
+        <section class="panel support-panel"><div class="panel-heading"><span class="step">02</span><h2>サポート編成</h2><span id="support-count" class="count-label">0 / 6</span></div><p class="panel-intro">所持ヒントとイベントの取得経路を照合。</p><div id="support-slots" class="support-slots"></div><p class="micro-note">同じキャラのカード、育成キャラ本人のカードは併用できません。6枠目はレンタルにも使えます。</p></section>
+        <section class="panel saved-panel"><div class="panel-heading"><span class="step">03</span><h2>プランを残す</h2></div><div class="plan-buttons"><button class="outline-button" id="save-plan">プランを保存</button><button class="outline-button" id="export-json">JSON書き出し</button></div><div class="saved-plans" id="saved-plans"></div><div class="inline-actions"><button class="text-button" id="import-json">JSON読み込み</button><button class="text-button muted" id="reset-plan">編成をリセット</button></div><input id="json-file" type="file" accept="application/json,.json" hidden></section>
+        <p class="sidebar-footnote">非公式ファンツール<br>スキルの優先度は攻略資料を参考にした目安です。</p>
+      </aside>
+      <section class="results-column" id="results" aria-labelledby="results-title">
+        <div class="results-heading"><div><p class="eyebrow">YOUR SKILL PLAN</p><h2 id="results-title">この条件で、取るスキル。</h2></div><button id="copy-checklist" class="primary-button"><span aria-hidden="true">▤</span> リストをコピー</button></div>
+        <div class="stats-grid" id="stats"></div>
+        <div class="results-notice" id="results-notice"></div>
+        <div class="results-toolbar"><div class="result-tabs" role="tablist" aria-label="結果の表示"><button class="active" role="tab" aria-selected="true" id="all-tab" data-view="all">取得候補</button><button role="tab" aria-selected="false" id="factor-tab" data-view="factor">継承・因子の準備 <span id="todo-count"></span></button></div><button class="text-button" id="download-checklist" aria-label="チェックリストをテキスト保存">↓ TXT</button></div>
+        <div class="filter-bar"><div class="category-filters" id="category-filters"></div><label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="skill-search" placeholder="スキルを検索" aria-label="スキルを検索"></label></div>
+        <div class="result-context"><span id="result-count"></span><label class="show-excluded"><input type="checkbox" id="show-excluded"> 見送りも表示</label></div>
+        <div id="skill-list" class="skill-list" aria-live="polite"></div>
+        <div class="bottom-note"><span class="info-icon">i</span><p>加速は本体固有・進化との重複を見て選び、すべてを必須とはしません。回復の必要量は最終ステータスなどで変わります。金スキルは白因子から取得できません。</p></div>
+      </section>
+    </div>
+    <footer class="footer"><span>UMAPLAN <span class="footer-line">/</span> PREPARE WITH A PLAN.</span><button class="text-button" id="footer-sources">出典と判定の範囲を見る ↗</button></footer>
+  </main>
+  <dialog id="picker-dialog" class="picker-dialog"><div class="dialog-heading"><div><p class="eyebrow" id="picker-eyebrow">SELECT</p><h2 id="picker-title">ウマ娘を選択</h2></div><button class="close-button" id="close-picker" aria-label="選択を閉じる">×</button></div><label class="search-field dialog-search"><span aria-hidden="true">⌕</span><input type="search" id="picker-search" placeholder="名前・衣装で検索" aria-label="キャラ・サポートカード検索"></label><div id="picker-filters" class="picker-filters"></div><div id="picker-results" class="picker-results"></div></dialog>
+  <dialog id="info-dialog" class="info-dialog"><div class="dialog-heading"><h2 id="info-title"></h2><button class="close-button" id="close-info" aria-label="説明を閉じる">×</button></div><div id="info-content"></div></dialog>
+  <div id="toast" role="status" class="toast" hidden></div>
+  <noscript><p>このアプリを使うにはJavaScriptを有効にしてください。</p></noscript>
+</body>
+</html>
