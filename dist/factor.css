@@ -1,0 +1,108 @@
+.artwork { display: inline-flex; flex: none; overflow: hidden; border-radius: 7px; background: #edf0e8; vertical-align: middle; }
+.artwork img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.character-art { width: 56px; height: 56px; }
+.support-art { width: 60px; height: 80px; }
+#character-label { display: flex; gap: 10px; align-items: center; text-align: left; }
+#character-label > span:last-child { min-width: 0; line-height: 1.7; }
+.picker-button { padding: 10px; }
+.visual-slot-select { display: flex; align-items: center; gap: 9px; padding: 0; min-width: 0; }
+.slot-copy { min-width: 0; flex: 1; }
+.slot-copy small { font-size: 10px; color: var(--muted); }
+.slot-copy .slot-title { overflow-wrap: anywhere; line-height: 1.5; display: block; }
+.slot-copy strong { overflow-wrap: anywhere; }
+.support-slot-main { align-items: center; padding: 11px 8px; gap: 7px; }
+.support-slot-main .slot-number { font-size: 9px; width: 13px; }
+.support-slot .support-art { width: 48px; height: 64px; }
+.empty-slot-art { display: grid; place-items: center; width: 48px; height: 64px; background: #f1f4ed; border-radius: 5px; color: #a6b29d; font-size: 22px; flex: none; }
+.support-slot .micro-note { font-size: 9px; line-height: 1.6; margin: 6px 0 0; }
+.support-slot .event-choices { padding: 0 9px 10px; }
+.support-slot select { max-width: 100%; }
+.picker-dialog { width: min(940px, calc(100vw - 36px)); }
+.picker-results { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.picker-summary { grid-column: 1 / -1; }
+.picker-result { padding: 10px; display: flex; min-width: 0; gap: 10px; align-items: center; }
+.picker-result .support-art { width: 56px; height: 75px; }
+.picker-result .character-art { width: 62px; height: 62px; }
+.picker-result-name { min-width: 0; }
+.picker-result-name small { font-size: 10px; overflow-wrap: anywhere; line-height: 1.6; }
+.picker-result-name strong { font-size: 12px; overflow-wrap: anywhere; }
+.picker-result-rarity { font-size: 9px; }
+.skill-owner { display: flex; align-items: center; gap: 7px; }
+.skill-owner .character-art { width: 38px; height: 38px; }
+.course-factor-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 14px; }
+.course-factor-summary[hidden] { display: none; }
+.course-factor-count { display: flex; flex-direction: column; gap: 4px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 7px; background: white; text-align: left; font-size: 11px; }
+.course-factor-count strong { font-size: 12px; }
+.course-factor-count span { color: var(--muted); }
+.course-factor-count.active { border-color: #8d9f77; background: #f2f6eb; }
+.factor-view-note { font-size: 11px; color: #6d7d63; line-height: 1.9; margin-top: 10px; }
+.factor-link { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 9px; padding: 0; background: none; border: 0; text-align: left; font: inherit; color: #244c3b; }
+.factor-link:hover { text-decoration: underline; }
+.factor-link > span { color: #9aa88b; font-size: 12px; }
+.factor-needed-reason { font-size: 10px; line-height: 1.8; color: #967337; margin-top: 5px; }
+.factor-plan-button { border: 0; border-top: 1px solid #edf0e7; background: #f7f9f3; padding: 11px 16px; display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: #3f6948; text-align: left; }
+.factor-plan-button:hover { background: #eaf1e2; }
+.factor-dialog { width: min(1120px, calc(100vw - 36px)); max-height: 91vh; padding: 26px; border: 0; border-radius: 14px; color: var(--text); background: #fafbf7; }
+.factor-dialog::backdrop { background: #192e22a8; }
+.factor-dialog .dialog-heading { position: sticky; top: -26px; margin: -2px -2px 15px; padding: 4px 0 12px; background: #fafbf7; z-index: 1; border-bottom: 1px solid var(--line); }
+.factor-dialog .dialog-heading h2 { font-size: 20px; }
+.factor-context { font-size: 12px; color: var(--muted); margin: 0 0 14px; }
+.factor-goal { padding: 15px; background: #eff4e6; border: 1px solid #dce5cb; border-radius: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.factor-goal > strong { font-size: 16px; }
+.factor-goal p { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.9; }
+.factor-setup { display: grid; grid-template-columns: 1fr 1fr; gap: 23px; margin-top: 22px; }
+.factor-dialog h3 { font-size: 15px; margin: 0 0 12px; }
+.factor-dialog .field-label { font-size: 11px; margin: 10px 0 6px; }
+.factor-dialog select { display: block; width: 100%; padding: 9px 7px; border: 1px solid var(--line); background: white; border-radius: 5px; font-size: 11px; color: var(--text); }
+.farmer-picker { display: flex; align-items: center; gap: 10px; min-height: 79px; }
+.farmer-picker > span:nth-child(2) { flex: 1; font-size: 12px; text-align: left; }
+.farmer-picker:disabled { opacity: 1; cursor: default; }
+.factor-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 26px; }
+.factor-section-heading h3 { margin-bottom: 0; }
+.factor-section-heading > span { font-size: 12px; color: var(--muted); }
+.factor-section-heading .outline-button { padding: 7px 10px; font-size: 11px; width: auto; flex: none; }
+.factor-caption { font-size: 11px; color: #7a8671; line-height: 1.9; margin: 9px 0 13px; }
+.farming-deck { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.farming-support { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 11px; background: white; min-width: 0; }
+.farming-support-select { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; padding: 0; background: none; text-align: left; }
+.farming-support-select > span:last-child { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.farming-support-select strong { font-size: 12px; overflow-wrap: anywhere; }
+.farming-support-select small { font-size: 10px; color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
+.farming-support .remove-support { position: absolute; top: 5px; right: 5px; font-size: 15px; width: 22px; }
+.farming-card-skills { font-size: 10px; line-height: 1.9; color: #6a7b58; margin: 10px 0 0; }
+.farm-event-label { display: block; font-size: 10px; color: var(--muted); margin: 10px 0 5px; }
+.farming-support select { font-size: 10px; }
+.farming-skill-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.farming-skill { background: white; border: 1px solid var(--line); padding: 15px; border-radius: 8px; font-size: 12px; line-height: 1.9; min-width: 0; }
+.farming-skill.focused-factor { border-color: #bda369; box-shadow: inset 0 0 0 1px #d9c799; }
+.farming-skill h4 { font-size: 14px; margin: 8px 0 4px; }
+.farming-skill p { color: #718165; margin: 7px 0; overflow-wrap: anywhere; }
+.farming-skill .farming-route { background: #f4f6ee; padding: 8px; border-radius: 4px; font-size: 11px; line-height: 1.9; }
+.farming-skill .prepare-checkbox { display: flex; gap: 5px; margin-top: 12px; }
+.focus-label { font-size: 10px; margin-left: 7px; color: #9f772f; }
+.factor-method-note { margin-top: 16px; padding: 13px 15px; border: 1px solid #e1e7d8; background: #f3f6ed; border-radius: 7px; font-size: 11px; line-height: 1.9; }
+.factor-method-note p { margin: 4px 0 0; }
+.factor-method-note a { color: #467a52; margin-right: 12px; }
+.factor-method-note ol { padding-left: 20px; margin: 8px 0; }
+.factor-missing { margin-top: 18px; border: 1px solid #e4dfce; border-radius: 7px; padding: 12px; background: #fbfaf5; }
+.factor-missing summary { font-size: 12px; cursor: pointer; }
+.factor-missing-item { display: flex; width: 100%; gap: 7px; align-items: center; border: 0; border-bottom: 1px solid #e9e5db; padding: 9px 0; background: none; color: #69765f; text-align: left; font-size: 12px; }
+.factor-missing-item > span:last-child { margin-left: auto; font-size: 10px; color: #8d9981; }
+@media(max-width:980px) { .picker-results { grid-template-columns: repeat(2,minmax(0,1fr)); } .farming-deck { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:650px) {
+  .support-slots { grid-template-columns: 1fr; }
+  .picker-results { grid-template-columns: 1fr; }
+  .picker-dialog { width: calc(100vw - 20px); }
+  .picker-result .support-art { width: 60px; height: 80px; }
+  .picker-result-name strong { font-size: 14px; }
+  .course-factor-count { padding: 9px 10px; }
+  .course-factor-count strong { font-size: 11px; }
+  .course-factor-count span { font-size: 9px; }
+  .factor-dialog { width: calc(100vw - 16px); max-height: 95vh; padding: 17px; }
+  .factor-dialog .dialog-heading { top: -17px; }
+  .factor-dialog .dialog-heading h2 { font-size: 16px; }
+  .factor-setup,.farming-deck,.farming-skill-list { grid-template-columns: 1fr; gap: 13px; }
+  .factor-section-heading { align-items: start; flex-wrap: wrap; }
+  .factor-missing-item { flex-wrap: wrap; }
+  .factor-missing-item > span:last-child { width: 100%; margin-left: 0; }
+}

@@ -16,7 +16,8 @@ for (const s of hierarchy.values()) if (!ids.has(s.id)) skills.push({ id: s.id, 
 const characters = read('gametora-character-cards.json').filter(c => c.release <= '2026-10-18').map(c => ({
   id: c.card_id, characterId: c.char_id, name: `${c.title_jp ?? ''}${c.name_jp}`, characterName: c.name_jp, title: c.title_jp ?? '',
   aptitude: c.aptitude, innate: c.skills_innate ?? [], awakening: c.skills_awakening ?? [], eventSkills: c.skills_event ?? [], unique: c.skills_unique ?? [],
-  evolutions: c.skills_evo ?? [], source: `https://gametora.com/ja/umamusume/characters/${c.url_name}`
+  evolutions: c.skills_evo ?? [], source: `https://gametora.com/ja/umamusume/characters/${c.url_name}`,
+  image: `assets/characters/${c.card_id}.png`, imageSource: `https://gametora.com/images/umamusume/characters/thumb/chara_stand_${c.char_id}_${c.card_id}.png`
 }));
 const curatedEvents = read('events.json').events;
 const supports = read('gametora-support-cards.json').filter(c => c.release <= '2026-10-18').map(c => {
@@ -28,7 +29,8 @@ const supports = read('gametora-support-cards.json').filter(c => c.release <= '2
     hintSkills: c.hints?.hint_skills ?? [],
     eventSkills: (c.event_skills ?? []).filter(id => !curatedIds.has(id)),
     events: events.map(e => ({ id: e.id, label: e.label, selection: e.selection, skills: (e.skills ?? []).map(s => s.skillId), choices: e.choices?.map(ch => ({ id: ch.id, label: ch.label, skills: ch.skills.map(s => s.skillId) })) ?? [], defaultChoiceId: e.defaultChoiceId })),
-    source: `https://gametora.com/ja/umamusume/supports/${c.url_name}`
+    source: `https://gametora.com/ja/umamusume/supports/${c.url_name}`,
+    image: `assets/supports/${c.support_id}.png`, imageSource: `https://media.gametora.com/umamusume/supports/full/small/${c.support_id}.png`
   };
 });
 // ☆1/2固有と☆3固有で継承版IDを共有する場合は、後の上位名称を採用する。

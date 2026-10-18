@@ -32,13 +32,13 @@ test('白ヒントは金スキルをカバーしない',()=>{
   const a=analyze(make({style:'先行',supports:[support.id]}),catalog);
   assert.notEqual(row(a,'本領発揮').status,'factor');assert.equal(row(a,'本領発揮').goldMissing,true);
 });
-test('サポートのイベント択は選択した択だけ取得候補に含める',()=>{
+test('本育成はコースに合う金スキル択を初期選択し、他の択は同時計上しない',()=>{
   const support=catalog.supports.find(s=>s.id===30311);
   const event=support.events.find(e=>e.selection==='single'&&e.choices.some(c=>c.skills.includes(203711)));
   assert.ok(event);
   const choice=event.choices.find(c=>c.skills.includes(203711));
   const state=make({style:'先行',supports:[30311]});
-  assert.equal(row(analyze(state,catalog),'勇気の一歩').goldMissing,true);
+  assert.equal(row(analyze(state,catalog),'勇気の一歩').goldMissing,false);
   state.eventChoices[event.id]=choice.id;
   assert.equal(row(analyze(state,catalog),'勇気の一歩').goldMissing,false);
   state.eventChoices[event.id]=event.choices.find(c=>c.id!==choice.id).id;
@@ -86,7 +86,7 @@ test('コース・脚質によって優先度を変える',()=>{
   assert.equal(row(analyze(make({}),catalog),'下り坂巧者').priority,3);
   assert.equal(row(analyze(make({courseId:'2026-12-cm'}),catalog),'下り坂巧者').priority,2);
 });
-test('真髄体をファインの対応するイベント択で補える',()=>{
+test('ファインの白択は因子周回だけで使い、本育成の真髄体の不足を消さない',()=>{
   const fine=catalog.supports.find(s=>s.id===30283);
   const event=fine.events.find(e=>e.choices.some(c=>c.skills.includes(210101)));
   const choice=event.choices.find(c=>c.skills.includes(210101));
@@ -94,6 +94,8 @@ test('真髄体をファインの対応するイベント択で補える',()=>{
   assert.equal(row(analyze(state,catalog),'レースの真髄・体').status,'factor');
   state.eventChoices[event.id]=choice.id;
   const a=analyze(state,catalog);
-  assert.equal(row(a,'レースの真髄・体').status,'available');
-  assert.ok(!exportChecklist(state,a).split('親からの継承候補')[0].includes('レースの真髄・体'));
+  assert.equal(row(a,'レースの真髄・体').status,'factor');
+  assert.ok(exportChecklist(state,a).split('親からの継承候補')[0].includes('レースの真髄・体'));
+  assert.ok(row(a,'レースの真髄・体').alternateEvents.some(e=>e.supportId===30283));
+  assert.equal(row(analyze(state,catalog,{purpose:'factor'}),'レースの真髄・体').status,'available');
 });

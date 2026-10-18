@@ -8,9 +8,10 @@
   <title>UMAPLAN｜コース別スキル・因子プランナー</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./style.css?v=1.1.0">
-  <link rel="stylesheet" href="./layout.css?v=1.1.0">
-  <script type="module" src="./app.js?v=1.1.0"></script>
+  <link rel="stylesheet" href="./style.css?v=1.2.0">
+  <link rel="stylesheet" href="./layout.css?v=1.2.0">
+  <link rel="stylesheet" href="./factor.css?v=1.2.0">
+  <script type="module" src="./app.js?v=1.2.0"></script>
 </head>
 <body>
   <a class="skip-link" href="#results">取得候補へ移動</a>
@@ -24,19 +25,21 @@
     <section id="course-banner" class="course-banner" aria-label="選択中のレース条件"></section>
     <div class="planner-layout">
       <aside class="setup-column" aria-label="育成条件と編成">
-        <section class="panel setup-panel"><div class="panel-heading"><span class="step">01</span><h2>育成プラン</h2><button class="small-button" id="sample-button">操作例を入力</button></div>
+        <section class="panel setup-panel"><div class="panel-heading"><span class="step">01</span><h2>本育成</h2><button class="small-button" id="sample-button">操作例を入力</button></div>
           <label class="field-label" for="character-picker">育成ウマ娘 <span>衣装ごとに選択</span></label><button class="picker-button" id="character-picker"><span id="character-label">ウマ娘を選択</span><span aria-hidden="true">⌄</span></button><div id="character-note" class="field-note">キャラを選ぶと、自前の取得スキルを照合します。</div>
           <p class="field-label">作戦</p><div class="style-buttons" id="style-buttons" aria-label="作戦"></div>
         </section>
-        <section class="panel support-panel"><div class="panel-heading"><span class="step">02</span><h2>サポート編成</h2><span id="support-count" class="count-label">0 / 6</span></div><p class="panel-intro">所持ヒントとイベントの取得経路を照合。</p><div id="support-slots" class="support-slots"></div><p class="micro-note">同じキャラのカード、育成キャラ本人のカードは併用できません。6枠目はレンタルにも使えます。</p></section>
+        <section class="panel support-panel"><div class="panel-heading"><span class="step">02</span><h2>本育成のサポカ</h2><span id="support-count" class="count-label">0 / 6</span></div><p class="panel-intro">金スキル側のイベント択を使って照合。</p><div id="support-slots" class="support-slots"></div><p class="micro-note">同じキャラのカード、育成キャラ本人のカードは併用できません。6枠目はレンタルにも使えます。</p></section>
         <section class="panel saved-panel"><div class="panel-heading"><span class="step">03</span><h2>プランを残す</h2></div><div class="plan-buttons"><button class="outline-button" id="save-plan">プランを保存</button><button class="outline-button" id="export-json">JSON書き出し</button></div><div class="saved-plans" id="saved-plans"></div><div class="inline-actions"><button class="text-button" id="import-json">JSON読み込み</button><button class="text-button muted" id="reset-plan">編成をリセット</button></div><input id="json-file" type="file" accept="application/json,.json" hidden></section>
         <p class="sidebar-footnote">非公式ファンツール<br>スキルの優先度は攻略資料を参考にした目安です。</p>
       </aside>
       <section class="results-column" id="results" aria-labelledby="results-title">
-        <div class="results-heading"><h2 id="results-title">取得スキル一覧</h2><button id="copy-checklist" class="primary-button"><span aria-hidden="true">▤</span> リストをコピー</button></div>
+        <div class="results-heading"><h2 id="results-title">必要な継承・白因子</h2><button id="copy-checklist" class="primary-button"><span aria-hidden="true">▤</span> リストをコピー</button></div>
         <div class="stats-grid" id="stats"></div>
         <div class="results-notice" id="results-notice"></div>
-        <div class="results-toolbar"><div class="result-tabs" role="tablist" aria-label="結果の表示"><button class="active" role="tab" aria-selected="true" id="all-tab" data-view="all">取得候補</button><button role="tab" aria-selected="false" id="factor-tab" data-view="factor">継承・因子の準備 <span id="todo-count"></span></button></div><button class="text-button" id="download-checklist" aria-label="チェックリストをテキスト保存">↓ TXT</button></div>
+        <div class="results-toolbar"><div class="result-tabs" role="tablist" aria-label="結果の表示"><button class="active" role="tab" aria-selected="true" id="factor-tab" data-view="factor">継承・白因子 <span id="todo-count"></span></button><button role="tab" aria-selected="false" id="all-tab" data-view="all">本育成のスキル</button></div><button class="text-button" id="download-checklist" aria-label="チェックリストをテキスト保存">↓ TXT</button></div>
+        <div id="course-factor-summary" class="course-factor-summary"></div>
+        <p id="factor-view-note" class="factor-view-note">因子名をタップすると、因子周回の編成・イベント択・優先スキルを表示。継承固有は候補で、直接親は2人までです。</p>
         <div id="priority-filters" class="priority-filters" aria-label="取得優先度で絞り込み"></div>
         <div class="filter-bar"><div class="category-filters" id="category-filters"></div><label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="skill-search" placeholder="スキルを検索" aria-label="スキルを検索"></label></div>
         <div class="result-context"><span id="result-count"></span><label class="show-excluded"><input type="checkbox" id="show-excluded"> 見送りも表示</label></div>
@@ -48,6 +51,7 @@
   </main>
   <dialog id="picker-dialog" class="picker-dialog"><div class="dialog-heading"><div><p class="eyebrow" id="picker-eyebrow">SELECT</p><h2 id="picker-title">ウマ娘を選択</h2></div><button class="close-button" id="close-picker" aria-label="選択を閉じる">×</button></div><label class="search-field dialog-search"><span aria-hidden="true">⌕</span><input type="search" id="picker-search" placeholder="名前・衣装で検索" aria-label="キャラ・サポートカード検索"></label><div id="picker-filters" class="picker-filters"></div><div id="picker-results" class="picker-results"></div></dialog>
   <dialog id="info-dialog" class="info-dialog"><div class="dialog-heading"><h2 id="info-title"></h2><button class="close-button" id="close-info" aria-label="説明を閉じる">×</button></div><div id="info-content"></div></dialog>
+  <dialog id="factor-dialog" class="factor-dialog"><div class="dialog-heading"><h2 id="factor-title">因子周回</h2><button class="close-button" id="close-factor" aria-label="因子周回を閉じる">×</button></div><div id="factor-content"></div></dialog>
   <div id="toast" role="status" class="toast" hidden></div>
   <noscript><p>このアプリを使うにはJavaScriptを有効にしてください。</p></noscript>
 </body>
