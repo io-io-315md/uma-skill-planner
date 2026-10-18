@@ -8,8 +8,9 @@
   <title>UMAPLAN｜コース別スキル・因子プランナー</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./style.css?v=1.0.1">
-  <script type="module" src="./app.js?v=1.0.1"></script>
+  <link rel="stylesheet" href="./style.css?v=1.1.0">
+  <link rel="stylesheet" href="./layout.css?v=1.1.0">
+  <script type="module" src="./app.js?v=1.1.0"></script>
 </head>
 <body>
   <a class="skip-link" href="#results">取得候補へ移動</a>
@@ -18,14 +19,13 @@
     <div class="header-actions"><span class="local-label"><span class="status-dot"></span>この端末に自動保存</span><button class="text-button" id="sources-button">データ・出典 <span aria-hidden="true">↗</span></button><button class="icon-button" id="help-button" aria-label="使い方">?</button></div>
   </header>
   <main class="workspace">
-    <div class="page-heading"><div><p class="eyebrow">RACE PREPARATION</p><h1>次のレースに、<br class="mobile-only">必要な準備を。</h1><p class="lead">コースと編成から、スキル・継承・白因子を整理。</p></div><span class="edition">2026 AUTUMN / WINTER<span>確認日 2026.10.18</span></span></div>
+    <div class="page-heading"><h1>コース別スキル・因子</h1><span class="edition">データ確認日 2026.10.18</span></div>
     <section class="schedule-section" aria-labelledby="schedule-title"><div class="section-caption"><h2 id="schedule-title">開催スケジュール</h2><span>10月チャンミは対象外</span></div><div id="course-tabs" class="course-tabs" aria-label="開催イベント"></div></section>
     <section id="course-banner" class="course-banner" aria-label="選択中のレース条件"></section>
     <div class="planner-layout">
       <aside class="setup-column" aria-label="育成条件と編成">
         <section class="panel setup-panel"><div class="panel-heading"><span class="step">01</span><h2>育成プラン</h2><button class="small-button" id="sample-button">操作例を入力</button></div>
           <label class="field-label" for="character-picker">育成ウマ娘 <span>衣装ごとに選択</span></label><button class="picker-button" id="character-picker"><span id="character-label">ウマ娘を選択</span><span aria-hidden="true">⌄</span></button><div id="character-note" class="field-note">キャラを選ぶと、自前の取得スキルを照合します。</div>
-          <div class="field-row"><label class="field-label" for="awakening">覚醒Lv</label><select id="awakening" aria-label="覚醒レベル"></select></div>
           <p class="field-label">作戦</p><div class="style-buttons" id="style-buttons" aria-label="作戦"></div>
         </section>
         <section class="panel support-panel"><div class="panel-heading"><span class="step">02</span><h2>サポート編成</h2><span id="support-count" class="count-label">0 / 6</span></div><p class="panel-intro">所持ヒントとイベントの取得経路を照合。</p><div id="support-slots" class="support-slots"></div><p class="micro-note">同じキャラのカード、育成キャラ本人のカードは併用できません。6枠目はレンタルにも使えます。</p></section>
@@ -33,17 +33,18 @@
         <p class="sidebar-footnote">非公式ファンツール<br>スキルの優先度は攻略資料を参考にした目安です。</p>
       </aside>
       <section class="results-column" id="results" aria-labelledby="results-title">
-        <div class="results-heading"><div><p class="eyebrow">YOUR SKILL PLAN</p><h2 id="results-title">この条件で、取るスキル。</h2></div><button id="copy-checklist" class="primary-button"><span aria-hidden="true">▤</span> リストをコピー</button></div>
+        <div class="results-heading"><h2 id="results-title">取得スキル一覧</h2><button id="copy-checklist" class="primary-button"><span aria-hidden="true">▤</span> リストをコピー</button></div>
         <div class="stats-grid" id="stats"></div>
         <div class="results-notice" id="results-notice"></div>
         <div class="results-toolbar"><div class="result-tabs" role="tablist" aria-label="結果の表示"><button class="active" role="tab" aria-selected="true" id="all-tab" data-view="all">取得候補</button><button role="tab" aria-selected="false" id="factor-tab" data-view="factor">継承・因子の準備 <span id="todo-count"></span></button></div><button class="text-button" id="download-checklist" aria-label="チェックリストをテキスト保存">↓ TXT</button></div>
+        <div id="priority-filters" class="priority-filters" aria-label="取得優先度で絞り込み"></div>
         <div class="filter-bar"><div class="category-filters" id="category-filters"></div><label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="skill-search" placeholder="スキルを検索" aria-label="スキルを検索"></label></div>
         <div class="result-context"><span id="result-count"></span><label class="show-excluded"><input type="checkbox" id="show-excluded"> 見送りも表示</label></div>
         <div id="skill-list" class="skill-list" aria-live="polite"></div>
         <div class="bottom-note"><span class="info-icon">i</span><p>加速は本体固有・進化との重複を見て選び、すべてを必須とはしません。回復の必要量は最終ステータスなどで変わります。金スキルは白因子から取得できません。</p></div>
       </section>
     </div>
-    <footer class="footer"><span>UMAPLAN <span class="footer-line">/</span> PREPARE WITH A PLAN.</span><button class="text-button" id="footer-sources">出典と判定の範囲を見る ↗</button></footer>
+    <footer class="footer"><span>UMAPLAN · 非公式ファンツール</span><button class="text-button" id="footer-sources">出典と判定の範囲を見る ↗</button></footer>
   </main>
   <dialog id="picker-dialog" class="picker-dialog"><div class="dialog-heading"><div><p class="eyebrow" id="picker-eyebrow">SELECT</p><h2 id="picker-title">ウマ娘を選択</h2></div><button class="close-button" id="close-picker" aria-label="選択を閉じる">×</button></div><label class="search-field dialog-search"><span aria-hidden="true">⌕</span><input type="search" id="picker-search" placeholder="名前・衣装で検索" aria-label="キャラ・サポートカード検索"></label><div id="picker-filters" class="picker-filters"></div><div id="picker-results" class="picker-results"></div></dialog>
   <dialog id="info-dialog" class="info-dialog"><div class="dialog-heading"><h2 id="info-title"></h2><button class="close-button" id="close-info" aria-label="説明を閉じる">×</button></div><div id="info-content"></div></dialog>

@@ -8,7 +8,14 @@ export const SOURCES = {
   database: { name: 'GameTora｜スキル・育成キャラ・サポートDB', url: 'https://gametora.com/ja/umamusume', kind: '非公式データベース' },
   events: { name: 'Tsuyuchan-jp｜イベント選択肢データ', url: 'https://github.com/Tsuyuchan-jp/umamusume-data', kind: '非公式データ' },
   inheritance: { name: 'GameWith｜継承進化スキル', url: 'https://gamewith.jp/uma-musume/article/show/574331', kind: '継承条件' },
-  renmen: { name: 'U-tools｜連綿', url: 'https://xn--gck1f423k.xn--1bvt37a.tools/skills/204622', kind: 'スキル条件' }
+  renmen: { name: 'U-tools｜連綿', url: 'https://xn--gck1f423k.xn--1bvt37a.tools/skills/204622', kind: 'スキル条件' },
+  noteKyoto: { name: 'マチカネ競馬民｜2026年11月LoH準備', url: 'https://note.com/tender_peony946/n/nd895ce63b609', kind: 'note・2026年11月向け' },
+  noteKyotoFront: { name: 'dai｜2026年11月LoH先行因子設計', url: 'https://note.com/light_bear2389/n/n6bb1895d9c7d', kind: 'note・編成を前提にした因子優先度' },
+  noteKyotoEscape: { name: 'dai｜2026年11月LoH逃げ因子設計', url: 'https://note.com/light_bear2389/n/n4767c0507205', kind: 'note・編成を前提にした因子優先度' },
+  noteNakayama: { name: 'yurei｜2026年1月中山2500mメモ', url: 'https://note.com/rich_elk157/n/n054c920285d8', kind: 'note・同コースの過去開催参考' },
+  shinzui: { name: 'ウマ娘ラボ｜真髄スキルの性能・優先度', url: 'https://umamusumelabo.com/beginner/sinzui-skill-kaisetu', kind: 'スキル解説・2024年' },
+  shinzuiBody: { name: 'GameWith｜レースの真髄・体', url: 'https://gamewith.jp/uma-musume/article/show/374185', kind: 'スキル条件・入手経路' },
+  longSkills: { name: 'おろぶろぐ｜長距離LoHスキル解説', url: 'https://www.orooroktgameblog.net/entry/2025/07/29/212054', kind: '長距離の参考・2025年札幌2600m' }
 };
 
 export const COURSES = [
@@ -19,13 +26,34 @@ export const COURSES = [
   { id: '2027-03-cm', month: '03', year: '2027', date: '3月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング MILE', surface: '芝', distanceType: 'マイル', confirmed: false, rule: 'デバフなし' }
 ];
 export const STYLES = ['逃げ', '先行', '差し', '追込'];
-export const CATEGORIES = ['加速', '速度', '緑スキル', '回復', '継承'];
+export const CATEGORIES = ['加速', '速度', '緑スキル', '回復', '継承', '位置取り'];
 
 const rec = (name, category, priority, reason, options = {}) => ({ name, category, priority, reason, courses: ['2026-11-loh', '2026-12-cm'], styles: STYLES, sources: ['november', 'december', 'database'], ...options });
 const inherited = (name, priority, reason, options = {}) => rec(name, '継承', priority, reason, { inherited: true, ...options });
 
 // 優先度は資料をもとにした編集上の分類。勝率や効果量の計算結果ではない。
 export const RECOMMENDATIONS = [
+  rec('レースの真髄・体', '速度', 1, 'ラストスパート最終盤で持久力を2%使い、速度を上げる。発動時に持久力2%以上が必要。', { conditionLabel: '持久力確保前提', sources: ['shinzui', 'shinzuiBody', 'longSkills', 'database'] }),
+  rec('自制心', '緑スキル', 1, '賢さを補い、掛かりにくくする。長距離、特にLoHの安定性を重視する構成で優先。', { sources: ['noteKyotoFront', 'noteKyotoEscape', 'noteNakayama', 'database'] }),
+  rec('天才肌', '緑スキル', 2, '基礎賢さ1200以上の中・長距離で発動。賢さを補うが、条件を満たさなければ発動しない。', { conditionLabel: '基礎賢さ1200以上', sources: ['noteKyotoFront', 'noteKyotoEscape', 'database'] }),
+  rec('レースの真髄・力', '速度', 2, 'ラストスパート最終盤で追い越そうとすると発動。先頭を維持する逃げでは使いにくい。', { conditionLabel: '追い越し対象が必要', sources: ['shinzui', 'noteNakayama', 'database'] }),
+  rec('レースの真髄・速', '速度', 3, '終盤が迫った中盤後半で発動する速度スキル。体・力や主要な中盤速度を先に検討。', { sources: ['shinzui', 'database'] }),
+  rec('アオハル点火・賢', '位置取り', 2, '序盤の視野・コース取りを補う。逃げの危険回避・ポジションセンスと組み合わせる候補。', { styles: ['逃げ'], conditionLabel: '逃げの序盤移動セット', sources: ['noteKyotoEscape', 'database'] }),
+  rec('危険回避', '位置取り', 2, '逃げの序盤に前を塞がれるか競り合うと外側へ移動。ポジションセンス等との組み合わせで検討。', { styles: ['逃げ'], conditionLabel: '移動スキルを組み合わせる', sources: ['noteKyotoEscape', 'database'] }),
+  rec('ポジションセンス', '位置取り', 2, '序盤のコース取りを補う。危険回避・アオハル点火・賢と組み合わせる候補。', { styles: ['逃げ'], sources: ['noteKyotoEscape', 'database'] }),
+  rec('遊びはおしまいっ！', '速度', 2, 'すぐ後ろにウマ娘が長くいると発動。長距離で複数回の発動も狙う速度候補。', { sources: ['noteKyotoFront', 'noteNakayama', 'database'] }),
+  rec('スリップストリーム', '速度', 2, 'すぐ前にウマ娘が長くいると発動。位置取り条件を満たせる展開で採用。', { sources: ['noteNakayama', 'december', 'database'] }),
+  rec('下り坂巧者', '速度', 2, '下り坂で速度を上げる。京都3000m・中山2500mの下り坂に対応。', { sources: ['november2', 'noteNakayama', 'database'] }),
+  rec('内弁慶', '速度', 3, '長距離の最終コーナーで内ラチ側が条件。中山では威風堂々、夢錦！の発動補助としても検討。', { conditionLabel: '内ラチ側が条件', sources: ['november2', 'december', 'database'] }),
+  rec('コーナー巧者○', '速度', 2, 'コーナーで発動する汎用速度。複数回の発動も狙えるため、長距離でも候補。', { gold: '弧線のプロフェッサー', sources: ['november2', 'december', 'noteNakayama', 'database'] }),
+  rec('アグレッシブ', '速度', 2, '持久力を使う先行の中盤速度。消費分も走り切れるスタミナ・回復を用意する。', { styles: ['先行'], conditionLabel: '持久力消費あり', sources: ['noteKyotoFront', 'noteNakayama', 'longSkills', 'database'] }),
+  rec('フルスロットル', '速度', 2, '持久力を使う差しの中盤速度。真髄・体や無我夢中を併用する場合は消費量に注意。', { styles: ['差し'], conditionLabel: '持久力消費あり', sources: ['november2', 'december2', 'longSkills', 'database'] }),
+  rec('惜しみなし', '速度', 2, '持久力を使う追込の中盤速度。消費分を確保した構成で採用。', { styles: ['追込'], conditionLabel: '持久力消費あり', sources: ['longSkills', 'database'] }),
+  rec('しゃかりき', '速度', 3, '逃げの中盤早期に発動する速度。持久力消費が大きいため、回復との組み合わせ次第。', { styles: ['逃げ'], conditionLabel: '持久力消費が大きい', sources: ['longSkills', 'database'] }),
+  rec('飛躍の予感', '速度', 2, '先行の中盤後半速度。終盤直前に発動した場合は加速への接続も狙える。', { styles: ['先行'], sources: ['november2', 'longSkills', 'database'] }),
+  rec('進出開始', '速度', 2, '差しの中盤後半、中団以降で発動。終盤直前の発動なら接続も狙える。', { styles: ['差し'], sources: ['november2', 'longSkills', 'database'] }),
+  rec('推力十分', '速度', 2, '追込の中盤後半、中団以降で発動。終盤直前の発動なら接続も狙える。', { styles: ['追込'], sources: ['november2', 'longSkills', 'database'] }),
+  ...STYLES.map(style => rec(`${style}のコツ○`, '緑スキル', 3, `${style}の賢さ・視野を補う。スピード緑や主加速を確保してから検討。`, { styles: [style], sources: ['noteKyotoFront', 'noteKyotoEscape', 'database'] })),
   rec('迷いなし', '加速', 1, '直線のラストスパートで1〜3位。終盤入りが直線の両コースで主加速候補。', { styles: ['逃げ'], gold: '万里一空' }),
   rec('勇気の一歩', '加速', 1, '直線のラストスパートで発動。順位条件がなく、先行の主加速候補。', { styles: ['先行'], gold: 'ショーダウン' }),
   rec('本領発揮', '加速', 1, '終盤目前に先頭または先頭から4バ身以内が条件。前に付ける展開を想定して採用。', { styles: ['先行'], gold: '怪物' }),

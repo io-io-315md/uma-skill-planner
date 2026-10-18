@@ -4,10 +4,9 @@ import { DEFAULT_STATE, normalizeState, analyze, TYPE_LABELS, PRIORITIES, export
 const $ = id => document.getElementById(id);
 const escape = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const STORE = 'umaplan.v1';
-const glyph = { '加速':'↗', '速度':'»', '緑スキル':'✦', '回復':'+', '継承':'◇' };
 const statusLabels = { factor:'白因子で補う候補', inheritance:'親から継承', available:'編成から取得候補', manual:'別ルートで取得', 'own-unique':'本体固有・継承不要', 'event-check':'イベント条件を確認', incompatible:'同キャラの継承不可' };
 let catalog, state, analysis;
-let view = 'all', category = 'すべて', query = '', showExcluded = false;
+let view = 'all', category = 'すべて', priorityFilter = 'all', query = '', showExcluded = false;
 let picker = { kind:'character', slot:0, type:'すべて' };
 let toastTimer;
 
@@ -31,9 +30,7 @@ function renderSetup() {
   $('character-label').textContent = char?.name ?? 'ウマ娘を選択';
   const aptitude = char?.aptitude;
   const styleIndex = STYLES.indexOf(state.style) + 6;
-  $('character-note').textContent = char ? `初期適性：長距離 ${aptitude?.[5] ?? '不明'} / ${state.style} ${aptitude?.[styleIndex] ?? '不明'}。適性の改造は別途判断してください。` : 'キャラを選ぶと、自前の取得スキルを照合します。';
-  const maxLevel = char ? char.awakening.length + 1 : 5;
-  $('awakening').innerHTML = Array.from({length:maxLevel}, (_,i) => `<option value="${i+1}" ${state.awakening === i+1 ? 'selected' : ''}>Lv ${i+1}</option>`).join('');
+  $('character-note').textContent = char ? `覚醒は最大で判定。初期適性：長距離 ${aptitude?.[5] ?? '不明'} / ${state.style} ${aptitude?.[styleIndex] ?? '不明'}` : '覚醒は各キャラの最大Lvとして判定します。';
   $('style-buttons').innerHTML = STYLES.map(style => `<button class="style-button ${style === state.style ? 'active' : ''}" data-style="${style}" aria-pressed="${style === state.style}">${style}</button>`).join('');
   $('support-count').textContent = `${state.supports.filter(Boolean).length} / 6`;
   $('support-slots').innerHTML = state.supports.map((id,i) => {
@@ -50,9 +47,11 @@ function renderResults() {
   $('todo-count').textContent = counts.factor + counts.inheritance;
   document.querySelectorAll('[data-view]').forEach(button => { button.classList.toggle('active', button.dataset.view === view); button.setAttribute('aria-selected', String(button.dataset.view === view)); });
   $('category-filters').innerHTML = ['すべて',...CATEGORIES].map(c => `<button class="category-button ${category === c ? 'active' : ''}" data-category="${c}" aria-pressed="${category === c}">${c}</button>`).join('');
-  const rows = analysis.rows.filter(r => (showExcluded || !r.excluded) && (category === 'すべて' || r.category === category) && (!query || `${r.name} ${r.gold ?? ''} ${r.ownerName ?? ''} ${r.reason}`.toLowerCase().includes(query.toLowerCase())) && (view === 'all' || ['factor','inheritance'].includes(r.status)));
+  const scopedRows = analysis.rows.filter(r => (showExcluded || !r.excluded) && (category === 'すべて' || r.category === category) && (!query || `${r.name} ${r.gold ?? ''} ${r.ownerName ?? ''} ${r.reason} ${r.priorityReason}`.toLowerCase().includes(query.toLowerCase())) && (view === 'all' || ['factor','inheritance'].includes(r.status)));
+  $('priority-filters').innerHTML = ['all',1,2,3].map(level => `<button class="priority-filter ${String(priorityFilter) === String(level) ? 'active' : ''}" data-priority="${level}" aria-pressed="${String(priorityFilter) === String(level)}">${level === 'all' ? '全優先度' : `<span class="priority-code priority-code-${level}">${PRIORITIES[level]}</span>`}<span class="priority-count">${level === 'all' ? scopedRows.length : scopedRows.filter(r => r.priority === level).length}</span></button>`).join('');
+  const rows = scopedRows.filter(r => priorityFilter === 'all' || r.priority === Number(priorityFilter));
   $('result-count').textContent = course.confirmed ? `${rows.length}件を表示 / 優先度順` : '詳細発表待ち';
-  if (!course.confirmed) $('skill-list').innerHTML = `<div class="empty-state"><span class="empty-icon">◇</span><h3>コースが決まったら、準備を。</h3><p>現在発表されているのは「${course.surface}・${course.distanceType}」。競馬場や距離が判明した時点で、対応コースと推奨データを追加できます。</p><a href="${SOURCES.official.url}" target="_blank" rel="noopener noreferrer">公式の予定を確認する ↗</a></div>`;
+  if (!course.confirmed) $('skill-list').innerHTML = `<div class="empty-state"><h3>コース詳細未発表</h3><p>発表済みの条件は「${course.surface}・${course.distanceType}」。コース確定後に推奨を追加します。</p><a href="${SOURCES.official.url}" target="_blank" rel="noopener noreferrer">公式スケジュール ↗</a></div>`;
   else if (!rows.length) $('skill-list').innerHTML = `<div class="empty-state"><span class="empty-icon">✓</span><h3>該当するスキルはありません</h3><p>検索・カテゴリ・見送り設定を確認してください。</p></div>`;
   else $('skill-list').innerHTML = rows.map(renderSkill).join('');
 }
@@ -60,9 +59,35 @@ function renderSkill(row) {
   const key = escape(row.name);
   const routeText = [...row.goldRoutes.map(r => `${row.gold}：${r.label}`), ...row.routes.map(r => `${row.name}：${r.label}`)];
   const owner = row.ownerName ?? '取得元を資料で確認';
-  const goldText = row.gold ? row.goldRoutes.length ? `金：${row.gold}の取得候補あり` : `金：${row.gold}は取得経路を要確認（白因子では補えません）` : '';
-  return `<article class="skill-card ${row.prepared ? 'prepared' : ''} ${row.excluded ? 'excluded' : ''}"><div class="skill-main"><span class="skill-icon category-${row.category}" aria-hidden="true">${glyph[row.category]}</span><div class="skill-body"><div class="skill-title-line"><h3 class="skill-title">${key}</h3><span class="priority priority-${row.priority}">${PRIORITIES[row.priority]}</span></div><p class="skill-reason">${escape(row.reason)}${row.note ? ` <strong>${escape(row.note)}</strong>` : ''}</p>${goldText ? `<p class="gold-note">${escape(goldText)}</p>` : ''}<div class="skill-category"><span>${row.evolvedInheritance ? '継承進化' : row.category}</span>${row.inherited ? `<span>${escape(owner)}</span>` : ''}</div></div><div class="skill-status"><span class="route-badge route-${row.status}">${statusLabels[row.status]}</span>${['factor','inheritance'].includes(row.status) ? `<label class="prepare-checkbox"><input type="checkbox" data-prepared="${key}" ${row.prepared ? 'checked' : ''}> 準備済み</label>` : ''}</div></div><details class="skill-details"><summary>取得ルート・採用条件</summary><div class="detail-content">${row.inherited ? `<p>継承元：${escape(owner)}。${row.sameCharacter ? '育成キャラと同じキャラのため、この衣装からの継承はできません。' : row.ownUnique ? '本体の固有・進化条件を確認してください。継承枠としての準備は不要です。' : '継承元の固有と、継承元・育成先の組み合わせを確認してください。'}</p>${row.evolvedInheritance ? '<p>継承進化には該当ウマ娘本人の所持と、直接の親からの継承が必要です。祖父母経由では進化できません。育成内の進化条件も満たしてください。</p>' : ''}` : `<p>${routeText.length ? 'この編成で見つかった取得候補：' : '選択中のキャラ・編成に取得経路が見つかっていません。白因子やシナリオ・イベント経由を確認してください。'}</p>${routeText.length ? `<ul>${routeText.map(t => `<li>${escape(t)}</li>`).join('')}</ul>` : ''}<p>所持ヒントは抽選です。イベントは選択肢・成功・完走などの条件があります。</p>${row.status === 'manual' ? '<p>シナリオなどの別経路で取得する予定として、手動で補っています。</p>' : ''}`}${row.category === '加速' ? '<p>主加速と補助加速をすべて積む必要はありません。本体固有や進化の加速を確認して、不要な候補は見送れます。</p>' : ''}<div class="source-links">${[...new Set(row.sources)].filter(id => SOURCES[id]).map(id => `<a href="${SOURCES[id].url}" target="_blank" rel="noopener noreferrer">${id === 'database' ? 'スキルDB' : id === 'november' ? '11月解説' : id === 'december' ? '12月解説' : id === 'inheritance' ? '継承条件' : SOURCES[id].name.split('｜')[0]} ↗</a>`).join('')}</div><div class="detail-actions">${!row.inherited ? `<button class="text-button" data-supplied="${key}">${state.supplied.includes(row.name) ? '別ルートの設定を解除' : '別ルートで取得する予定にする'}</button>` : '<span></span>'}<button class="text-button muted" data-excluded="${key}">${row.excluded ? '候補に戻す' : '今回は見送る'}</button></div></div></details></article>`;
+  const sourceKeys = [...new Set([...row.prioritySources, ...row.sources])].filter(id => {
+    if (!SOURCES[id]) return false;
+    if (analysis.course.id === '2026-11-loh' && (id.startsWith('december') || id === 'noteNakayama')) return false;
+    if (analysis.course.id === '2026-12-cm' && (id.startsWith('november') || id.startsWith('noteKyoto'))) return false;
+    return true;
+  });
+  const inheritanceDetails = row.inherited ? `<p><strong>継承元：</strong>${escape(owner)}</p><p>${row.sameCharacter ? '育成キャラと同じキャラのため、この衣装からの継承はできません。' : row.ownUnique ? '本体の固有・進化条件を確認してください。継承枠としての準備は不要です。' : '継承元の固有と、継承元・育成先の組み合わせを確認してください。'}</p>${row.evolvedInheritance ? '<p>継承進化には本人の所持と、直接の親からの継承が必要です。祖父母経由では進化できません。育成内の進化条件も満たしてください。</p>' : ''}` : '';
+  const routeDetails = !row.inherited ? `<p><strong>この編成の取得候補</strong></p>${routeText.length ? `<ul>${routeText.map(t => `<li>${escape(t)}</li>`).join('')}</ul>` : '<p>登録された取得経路に見つかっていません。白因子・シナリオ・イベント経由を確認してください。</p>'}<p>ヒントは抽選、イベントは選択・成功・完走等の条件があります。金スキルは白因子から取得できません。</p>${row.status === 'manual' ? '<p>別経路で取得する予定として手動で補っています。</p>' : ''}` : '';
+  return `<article class="skill-card ${row.prepared ? 'prepared' : ''} ${row.excluded ? 'excluded' : ''}" data-priority="${row.priority}">
+    <div class="skill-main">
+      <div class="skill-card-top"><span class="priority priority-${row.priority}">優先度 <strong>${PRIORITIES[row.priority]}</strong></span><span class="skill-category-label">${row.evolvedInheritance ? '継承進化' : row.category}</span></div>
+      <h3 class="skill-title">${key}</h3>
+      <p class="skill-reason">${escape(row.priorityReason)}</p>
+      ${row.conditionLabel ? `<p class="skill-condition">${escape(row.conditionLabel)}</p>` : ''}
+      ${row.gold ? `<p class="gold-note"><span>上位：${escape(row.gold)}</span><span>${row.goldRoutes.length ? '取得候補あり' : '経路を確認'}</span></p>` : ''}
+      ${row.inherited ? `<p class="skill-owner">${escape(owner)}</p>` : ''}
+      <div class="skill-state-row"><span class="route-badge route-${row.status}">${statusLabels[row.status]}</span>${['factor','inheritance'].includes(row.status) ? `<label class="prepare-checkbox"><input type="checkbox" data-prepared="${key}" ${row.prepared ? 'checked' : ''}> 準備済み</label>` : ''}</div>
+    </div>
+    <details class="skill-details"><summary>条件・取得ルート・根拠</summary><div class="detail-content">
+      <p><strong>発動・採用条件</strong></p><p>${escape(row.reason)}${row.note ? ` ${escape(row.note)}` : ''}</p>
+      ${inheritanceDetails}${routeDetails}
+      ${row.category === '加速' ? '<p>本体固有・進化の加速との重複を確認し、不要な補助加速は見送りに設定できます。</p>' : ''}
+      <p class="priority-source-note">優先度は資料と発動条件を基にした取得時の目安です。編成を前提にした因子設計の順位は、そのまま取得優先度に転用していません。</p>
+      <div class="source-links">${sourceKeys.map(id => `<a href="${SOURCES[id].url}" target="_blank" rel="noopener noreferrer">${escape(SOURCES[id].name)} ↗</a>`).join('')}</div>
+      <div class="detail-actions">${!row.inherited ? `<button class="text-button" data-supplied="${key}">${state.supplied.includes(row.name) ? '別ルートの設定を解除' : '別ルートで取得する予定にする'}</button>` : '<span></span>'}<button class="text-button muted" data-excluded="${key}">${row.excluded ? '候補に戻す' : '今回は見送る'}</button></div>
+    </div></details>
+  </article>`;
 }
+
 function renderSaved() {
   $('saved-plans').innerHTML = state.plans.map((plan,i) => `<div class="saved-plan"><button data-load-plan="${i}">${escape(plan.label)}</button><button data-delete-plan="${i}" aria-label="保存プラン${i+1}を削除">×</button></div>`).join('');
 }
@@ -85,18 +110,19 @@ function renderPicker() {
 }
 function openInfo(title, html) { $('info-title').textContent = title; $('info-content').innerHTML = html; $('info-dialog').showModal(); }
 function showSources() {
-  openInfo('データ・出典と判定の範囲', `<p>開催条件はCygamesの公式発表、推奨は各攻略資料を確認しています。スキル・編成の対応は非公式データベースに基づきます。</p><h3>データの範囲</h3><p>取得日 ${VERIFIED_AT}。育成キャラ ${catalog.characters.length}衣装 / サポート ${catalog.supports.length}枚 / 詳細なイベント選択肢 ${catalog.supports.filter(s => s.events.length).length}枚。10月チャンミは含めません。1〜3月の未発表条件は推測しません。</p><h3>取得判定について</h3><ul><li>初期・選択した覚醒Lvまでの自前スキル、育成キャラのイベント、サポートヒント・イベントを照合します。</li><li>詳細データがあるイベントは選択予定の択だけ計上します。それ以外は「イベント条件を確認」と表示します。</li><li>キャラの進化スキルは加速量などを自動比較しません。本体で足りるものは「今回は見送る」で調整してください。</li><li>シナリオ固有・共通イベント等は自動計上しません。各スキルの「別ルートで取得する予定にする」で補えます。</li><li>白因子候補は、この編成の登録済み取得経路に見つからない白スキルです。因子発動や取得を保証する表示ではありません。</li><li>推奨はすべてを必須とするものではありません。最終スタミナ、対戦相手、所持キャラに応じて判断してください。</li></ul><h3>参照元</h3>${Object.values(SOURCES).map(s => `<div class="source-row"><small>${escape(s.kind)}</small><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escape(s.name)} ↗</a></div>`).join('')}<h3>保存と更新</h3><p>プランはこのブラウザーのlocalStorageに保存します。サーバーへの送信は行いません。データや開催条件は自動追従しません。GitHub上のデータ更新を反映してください。</p><p>「ウマ娘 プリティーダービー」の権利は株式会社Cygames等の権利者に帰属します。本ツールは非公式です。</p>`);
+  openInfo('データ・出典と判定の範囲', `<p>開催条件はCygamesの公式発表、推奨は各攻略資料を確認しています。スキル・編成の対応は非公式データベースに基づきます。</p><h3>データの範囲</h3><p>取得日 ${VERIFIED_AT}。育成キャラ ${catalog.characters.length}衣装 / サポート ${catalog.supports.length}枚 / 詳細なイベント選択肢 ${catalog.supports.filter(s => s.events.length).length}枚。10月チャンミは含めません。1〜3月の未発表条件は推測しません。</p><h3>取得優先度について</h3><p>優先度は高・中・低の3段階です。コースと脚質に合うスキルを、発動条件・役割・取得Ptに対する効果を参考に分類しています。公式のランキングや勝率計算ではありません。</p><p>真髄・体の優先度「高」は消費分も走り切れる持久力の確保が前提です。noteの編成別因子優先度と、取得時の優先度は区別しています。同コースの過去開催資料は参考として明記しています。</p><h3>取得判定について</h3><ul><li>初期・最大覚醒Lvまでの自前スキル、育成キャラのイベント、サポートヒント・イベントを照合します。</li><li>詳細データがあるイベントは選択予定の択だけ計上します。それ以外は「イベント条件を確認」と表示します。</li><li>キャラの進化スキルは加速量などを自動比較しません。本体で足りるものは「今回は見送る」で調整してください。</li><li>シナリオ固有・共通イベント等は自動計上しません。各スキルの「別ルートで取得する予定にする」で補えます。</li><li>白因子候補は、この編成の登録済み取得経路に見つからない白スキルです。因子発動や取得を保証する表示ではありません。</li><li>推奨はすべてを必須とするものではありません。最終スタミナ、対戦相手、所持キャラに応じて判断してください。</li></ul><h3>参照元</h3>${Object.values(SOURCES).map(s => `<div class="source-row"><small>${escape(s.kind)}</small><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escape(s.name)} ↗</a></div>`).join('')}<h3>保存と更新</h3><p>プランはこのブラウザーのlocalStorageに保存します。サーバーへの送信は行いません。データや開催条件は自動追従しません。GitHub上のデータ更新を反映してください。</p><p>「ウマ娘 プリティーダービー」の権利は株式会社Cygames等の権利者に帰属します。本ツールは非公式です。</p>`);
 }
 function download(name,text,type='text/plain;charset=utf-8') { const url = URL.createObjectURL(new Blob([text],{type})); const a = document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(() => URL.revokeObjectURL(url),1000); }
 
 document.addEventListener('click', event => {
   const button = event.target.closest('button'); if (!button || !catalog) return;
   const d = button.dataset;
-  if (d.course) { category='すべて'; update({courseId:d.course}); }
+  if (d.course) { category='すべて'; priorityFilter='all'; update({courseId:d.course}); }
   else if (d.style) update({style:d.style});
   else if (d.slot !== undefined) openPicker('support',Number(d.slot));
   else if (d.remove !== undefined) { const supports=[...state.supports];supports[Number(d.remove)]=null;update({supports}); }
   else if (d.view) { view=d.view;renderResults(); }
+  else if (d.priority !== undefined) { priorityFilter=d.priority;renderResults(); }
   else if (d.category) { category=d.category;renderResults(); }
   else if (d.pickerType) { picker.type=d.pickerType;renderPicker(); }
   else if (d.pick) {
@@ -117,14 +143,13 @@ document.addEventListener('change', event => {
   else if(target.dataset.prepared)update({prepared:toggle(state.prepared,target.dataset.prepared)});
 });
 $('character-picker').addEventListener('click',()=>openPicker('character'));
-$('awakening').addEventListener('change',e=>update({awakening:Number(e.target.value)}));
 $('skill-search').addEventListener('input',e=>{query=e.target.value;renderResults();});
 $('picker-search').addEventListener('input',renderPicker);
 $('show-excluded').addEventListener('change',e=>{showExcluded=e.target.checked;renderResults();});
 $('close-picker').addEventListener('click',()=>$('picker-dialog').close());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());
 for(const id of ['sources-button','footer-sources'])$(id).addEventListener('click',showSources);
-$('help-button').addEventListener('click',()=>openInfo('使い方', '<h3>1. コースと育成条件を選ぶ</h3><p>上の開催予定からコースを選び、育成する衣装・覚醒Lv・作戦を設定します。</p><h3>2. サポートを6枚選ぶ</h3><p>イベントの選択予定があるカードは、今回取りたい択を指定します。「未指定」の択のスキルは取得経路に含めません。</p><h3>3. 継承・因子の準備を確認する</h3><p>「継承・因子の準備」タブで、編成にない白スキルと継承元を確認します。シナリオ等で取れるものは「別ルートで取得」、不要な加速などは「今回は見送る」に設定できます。</p><h3>4. 保存する</h3><p>準備できたものにチェックし、リストをコピー。複数プランの保存とJSONでの持ち運びもできます。スマートフォンはブラウザーの「ホーム画面に追加」からアプリとして使えます。</p>'));
+$('help-button').addEventListener('click',()=>openInfo('使い方', '<h3>1. コースと育成条件を選ぶ</h3><p>上の開催予定からコースを選び、育成する衣装・作戦を設定します。</p><h3>2. サポートを6枚選ぶ</h3><p>イベントの選択予定があるカードは、今回取りたい択を指定します。「未指定」の択のスキルは取得経路に含めません。</p><h3>3. 継承・因子の準備を確認する</h3><p>「継承・因子の準備」タブで、編成にない白スキルと継承元を確認します。シナリオ等で取れるものは「別ルートで取得」、不要な加速などは「今回は見送る」に設定できます。</p><h3>4. 保存する</h3><p>準備できたものにチェックし、リストをコピー。複数プランの保存とJSONでの持ち運びもできます。スマートフォンはブラウザーの「ホーム画面に追加」からアプリとして使えます。</p>'));
 $('copy-checklist').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(exportChecklist(state,analysis));toast('チェックリストをコピーしました。');}catch{download('umaplan-checklist.txt',exportChecklist(state,analysis));toast('コピーできなかったため、テキストで保存しました。');}});
 $('download-checklist').addEventListener('click',()=>download('umaplan-checklist.txt',exportChecklist(state,analysis)));
 $('save-plan').addEventListener('click',()=>{const char=analysis.index.characters.get(state.characterId);const {plans,...snapshot}=state;const label=`${analysis.course.month}月 ${analysis.course.venue??'未定'} / ${char?.characterName??'キャラ未選択'} / ${state.style}`;update({plans:[{label,state:snapshot},...plans].slice(0,20)});toast('プランを保存しました（最大20件）。');});
@@ -132,7 +157,7 @@ $('export-json').addEventListener('click',()=>download('umaplan-plans.json',JSON
 $('import-json').addEventListener('click',()=>$('json-file').click());
 $('json-file').addEventListener('change',async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>3_000_000)throw new Error('large');const raw=JSON.parse(await file.text());if(raw.app!=='umaplan'||raw.version!==1||!raw.state)throw new Error('format');update(raw.state);toast('プランを読み込みました。');}catch{toast('UMAPLANで書き出した有効なJSONを選んでください。');}finally{event.target.value='';}});
 $('reset-plan').addEventListener('click',()=>{update({...structuredClone(DEFAULT_STATE),courseId:state.courseId,plans:state.plans});toast('現在の編成をリセットしました。保存プランは保持しています。');});
-$('sample-button').addEventListener('click',()=>{update({characterId:107601,style:'差し',awakening:5,supports:[30317,30304,30306,30302,30287,30305],eventChoices:{},supplied:[],prepared:[],excluded:[]});toast('操作例を入力しました。イベントの選択予定も設定できます。');});
+$('sample-button').addEventListener('click',()=>{update({characterId:107601,style:'差し',supports:[30317,30304,30306,30302,30287,30305],eventChoices:{},supplied:[],prepared:[],excluded:[]});toast('操作例を入力しました。イベントの選択予定も設定できます。');});
 for(const id of ['picker-dialog','info-dialog'])$(id).addEventListener('click',event=>{if(event.target===$(id)){const rect=$(id).getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)$(id).close();}});
 
 async function boot() {

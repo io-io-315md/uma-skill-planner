@@ -1,7 +1,8 @@
 import { COURSES, RECOMMENDATIONS, STYLES } from './recommendations.js';
+import { resolvePriority, PRIORITIES } from './priorities.js';
+export { PRIORITIES } from './priorities.js';
 
 export const TYPE_LABELS = { speed: 'スピード', stamina: 'スタミナ', power: 'パワー', guts: '根性', wit: '賢さ', friend: '友人', group: 'グループ' };
-export const PRIORITIES = { 1: '優先', 2: 'おすすめ', 3: '補助・条件次第' };
 export const DEFAULT_STATE = { version: 1, courseId: COURSES[0].id, style: '先行', characterId: null, awakening: 5, supports: [null,null,null,null,null,null], eventChoices: {}, supplied: [], prepared: [], excluded: [], plans: [] };
 
 export function normalizeState(raw, catalog) {
@@ -10,9 +11,8 @@ export function normalizeState(raw, catalog) {
   if (!STYLES.includes(state.style)) state.style = DEFAULT_STATE.style;
   if (!catalog.characters.some(c => c.id === Number(state.characterId))) state.characterId = null;
   else state.characterId = Number(state.characterId);
-  state.awakening = Math.max(1, Math.min(7, Number(state.awakening) || 5));
   const char = catalog.characters.find(c => c.id === state.characterId);
-  state.awakening = Math.min(state.awakening, char ? char.awakening.length + 1 : 5);
+  state.awakening = char ? char.awakening.length + 1 : 5;
   const seen = new Set();
   state.supports = Array.from({ length: 6 }, (_, i) => {
     const s = catalog.supports.find(c => c.id === Number(state.supports?.[i]));
@@ -50,7 +50,7 @@ export function acquisitionRoutes(state, index) {
   const char = index.characters.get(state.characterId);
   if (char) {
     char.innate.forEach(id => add(id, { kind: 'native', label: `${char.characterName}の初期スキル` }));
-    char.awakening.slice(0, state.awakening - 1).forEach((id, i) => add(id, { kind: 'native', label: `自前・覚醒Lv${i+2}` }));
+    char.awakening.forEach((id, i) => add(id, { kind: 'native', label: `自前・覚醒Lv${i+2}` }));
     char.eventSkills.forEach(id => add(id, { kind: 'character-event', label: '育成キャラのイベント候補（条件あり）' }));
   }
   for (const id of state.supports) {
@@ -91,7 +91,7 @@ export function analyze(state, catalog) {
     if (r.inherited) status = ownUnique ? 'own-unique' : sameCharacter ? 'incompatible' : 'inheritance';
     else if (manual) status = 'manual';
     else if (available.length || goldRoutes.length) status = [...available, ...goldRoutes].every(a => a.kind === 'event-unverified') ? 'event-check' : 'available';
-    return { ...r, skillId: skill?.id, goldId: gold?.id, ownerId, ownerName: owner?.name, status, routes: available, goldRoutes, goldMissing: !!gold && !goldRoutes.length, ownUnique, sameCharacter, excluded, prepared: state.prepared.includes(r.name), note: r.courseNotes?.[course.id] ?? '', factorEligible: !r.inherited && skill?.rarity === 1 && skill.id < 900000 };
+    return { ...r, ...resolvePriority(r, course.id, state.style), skillId: skill?.id, goldId: gold?.id, ownerId, ownerName: owner?.name, status, routes: available, goldRoutes, goldMissing: !!gold && !goldRoutes.length, ownUnique, sameCharacter, excluded, prepared: state.prepared.includes(r.name), note: r.courseNotes?.[course.id] ?? '', factorEligible: !r.inherited && skill?.rarity === 1 && skill.id < 900000 };
   }).sort((a,b) => a.priority - b.priority || a.category.localeCompare(b.category, 'ja') || a.name.localeCompare(b.name, 'ja'));
   const active = rows.filter(r => !r.excluded);
   return { course, rows, index, counts: {
@@ -106,7 +106,7 @@ export function analyze(state, catalog) {
 export function exportChecklist(state, analysis) {
   const { course, index } = analysis;
   const char = index.characters.get(state.characterId);
-  const lines = [`UMAPLAN｜${course.year}年${course.date} ${course.title}`, course.confirmed ? `${course.venue} ${course.surface}${course.distance}m / ${course.turn} / ${course.season} / ${course.weather} / ${course.going}` : 'コース詳細未発表', `育成：${char?.name ?? '未選択'} / ${state.style} / 覚醒Lv${state.awakening}`, '', 'サポート編成', ...state.supports.map((id,i) => `${i+1}. ${index.supports.get(id)?.name ?? '未選択'}`), ''];
+  const lines = [`UMAPLAN｜${course.year}年${course.date} ${course.title}`, course.confirmed ? `${course.venue} ${course.surface}${course.distance}m / ${course.turn} / ${course.season} / ${course.weather} / ${course.going}` : 'コース詳細未発表', `育成：${char?.name ?? '未選択'} / ${state.style}（覚醒は最大で判定）`, '', 'サポート編成', ...state.supports.map((id,i) => `${i+1}. ${index.supports.get(id)?.name ?? '未選択'}`), ''];
   for (const [title, pred] of [
     ['白因子で補う候補', r => r.status === 'factor' && r.factorEligible],
     ['親からの継承候補', r => r.status === 'inheritance'],
@@ -115,7 +115,7 @@ export function exportChecklist(state, analysis) {
   ]) {
     lines.push(title);
     const rows = analysis.rows.filter(r => !r.excluded && pred(r));
-    lines.push(...(rows.length ? rows.map(r => `${r.prepared ? '[x]' : '[ ]'} ${title.startsWith('金') ? r.gold : r.name}${r.evolvedInheritance ? '（本人所持・直接の親・進化条件を確認）' : ''}`) : ['該当なし']), '');
+    lines.push(...(rows.length ? rows.map(r => `${r.prepared ? '[x]' : '[ ]'} [優先度 ${PRIORITIES[r.priority]}] ${title.startsWith('金') ? r.gold : r.name}${r.conditionLabel ? `（${r.conditionLabel}）` : ''}${r.evolvedInheritance ? '（本人所持・直接の親・進化条件を確認）' : ''}`) : ['該当なし']), '');
   }
   lines.push('優先度は編集上の目安。全候補を必須とはしません。ヒント・イベント・因子の発生は確約しません。', 'シナリオ固有の取得経路は自動計上しません。「別ルートで取得」に設定して補ってください。', `参照：https://dmg.umamusume.jp/news/detail/?id=3483 / 確認日：2026-10-18`);
   return lines.join('\n');

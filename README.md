@@ -7,7 +7,8 @@
 ## 使えること
 
 - 11月京都芝3000m LoH、12月中山芝2500mチャンミのコース別スキル候補
-- 全271衣装の育成キャラ、563枚のサポートカード、覚醒Lv1〜7の照合
+- 全271衣装の育成キャラ、563枚のサポートカードの照合。覚醒は各キャラの最大Lvで判定
+- PCではスキル一覧を2列表示。各スキルに高・中・低の優先度と理由を表示し、絞り込み可能
 - 所持ヒント・イベントと、白因子で補う候補・継承元の表示
 - 45枚のカードの詳細イベント択。未指定の択は取得経路に含めません
 - 金スキルと下位白の区別、同キャラサポートの併用防止
@@ -41,7 +42,9 @@ npmがある環境では `npm start`、`npm run check`、`npm test` も使えま
 
 ## 判定の範囲
 
-優先度は攻略資料に基づく編集上の目安で、勝率や効果量のシミュレーション結果ではありません。全候補の取得を必須とするものでもありません。
+優先度は攻略資料に基づく高・中・低の3段階の目安で、勝率や効果量のシミュレーション結果ではありません。全候補の取得を必須とするものでもありません。京都3000mでは右回り・秋ウマ娘を高、京都レース場を低に分けます。真髄・体は消費分も走り切れる持久力を確保する前提で高としています。発動条件や脚質による違い、出典は各スキルの詳細から確認できます。
+
+編成別の因子周回記事は、サポートから取得できるスキルを因子目標から外している場合があります。その順位を取得優先度に直接転用せず、取得優先度と編成から不足する因子候補を別々に判定します。[優先度調査の整理](docs/priority-research.md)
 
 「編成から取得候補」は、所持ヒントの抽選やイベントの条件を満たせば取得できる経路を表します。詳細択が未登録のイベントは「イベント条件を確認」と表示します。白因子候補は登録された取得経路との差分で、因子が必ず発動するという表示ではありません。
 
@@ -49,7 +52,7 @@ npmがある環境では `npm start`、`npm run check`、`npm test` も使えま
 
 ## データ更新
 
-`dist/recommendations.js`に公式開催条件・コース別推奨・参照元、`dist/data/catalog.json`にキャラ／サポートとスキルの対応を分離しています。動作時に外部DBを取りに行かないため、提供元の停止で照合が壊れません。
+`dist/recommendations.js`に公式開催条件・コース別推奨・参照元、`dist/priorities.js`にコース・脚質別の優先度と理由、`dist/data/catalog.json`にキャラ／サポートとスキルの対応を分離しています。動作時に外部DBを取りに行かないため、提供元の停止で照合が壊れません。
 
 ```sh
 node tools/update-data.mjs
@@ -74,5 +77,7 @@ node --test
 - [神ゲー攻略｜11月LoH](https://kamigame.jp/umamusume/page/438640407664972073.html)、[12月チャンミ](https://kamigame.jp/umamusume/page/443708416242747935.html)
 - [Tsuyuchan-jp/umamusume-data](https://github.com/Tsuyuchan-jp/umamusume-data)（スキル階層・45枚のイベント択）
 - [GameWith｜継承進化スキル](https://gamewith.jp/uma-musume/article/show/574331)、[U-tools｜連綿](https://xn--gck1f423k.xn--1bvt37a.tools/skills/204622)
+- [マチカネ競馬民｜2026年11月LoH準備](https://note.com/tender_peony946/n/nd895ce63b609)、[dai｜先行の因子設計](https://note.com/light_bear2389/n/n6bb1895d9c7d)、[逃げの因子設計](https://note.com/light_bear2389/n/n4767c0507205)
+- [ウマ娘ラボ｜真髄スキルの解説](https://umamusumelabo.com/beginner/sinzui-skill-kaisetu)、[GameWith｜真髄・体](https://gamewith.jp/uma-musume/article/show/374185)
 
 本ツールは非公式です。ゲームの権利は株式会社Cygames等の権利者に帰属します。保存先はブラウザーのlocalStorageで、プランをサーバーへ送信しません。Google Fontsを外部読み込みしますが、利用できない場合はシステムフォントを使います。
