@@ -2,6 +2,8 @@
 
 ウマ娘の対人戦に向けて、コース・作戦・育成キャラ・サポート編成からスキルと継承・白因子の準備を整理するWebアプリです。
 
+**[アプリを開く](https://io-io-315md.github.io/uma-skill-planner/)**
+
 ## 使えること
 
 - 11月京都芝3000m LoH、12月中山芝2500mチャンミのコース別スキル候補
@@ -35,7 +37,7 @@ npmがある環境では `npm start`、`npm run check`、`npm test` も使えま
 
 ## GitHub Pages
 
-`dist/`だけで動く静的アプリです。リポジトリのSettings → Pages → Sourceを「GitHub Actions」に設定し、Actionsの「Deploy GitHub Pages」を手動実行すると公開できます。推論・APIキー・バックエンドは不要です。Pagesの利用可否はリポジトリの公開範囲とGitHubプランによります。[GitHub公式手順](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
+`dist/`だけで動く静的アプリです。このリポジトリはGitHub Pagesを設定済みで、mainへのpush後にチェック・公開を行います。手動実行もできます。フォークして利用する場合は、Settings → Pages → Sourceを「GitHub Actions」に設定してください。推論・APIキー・バックエンドは不要です。Pagesの利用可否はリポジトリの公開範囲とGitHubプランによります。[GitHub公式手順](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
 
 ## 判定の範囲
 

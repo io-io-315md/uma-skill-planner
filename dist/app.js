@@ -50,7 +50,7 @@ function renderResults() {
   $('todo-count').textContent = counts.factor + counts.inheritance;
   document.querySelectorAll('[data-view]').forEach(button => { button.classList.toggle('active', button.dataset.view === view); button.setAttribute('aria-selected', String(button.dataset.view === view)); });
   $('category-filters').innerHTML = ['すべて',...CATEGORIES].map(c => `<button class="category-button ${category === c ? 'active' : ''}" data-category="${c}" aria-pressed="${category === c}">${c}</button>`).join('');
-  const rows = analysis.rows.filter(r => (showExcluded || !r.excluded) && (category === 'すべて' || r.category === category) && (!query || `${r.name} ${r.gold ?? ''} ${r.ownerName ?? ''} ${r.reason}`.toLowerCase().includes(query.toLowerCase())) && (view === 'all' || ['factor','inheritance','incompatible'].includes(r.status) || r.goldMissing));
+  const rows = analysis.rows.filter(r => (showExcluded || !r.excluded) && (category === 'すべて' || r.category === category) && (!query || `${r.name} ${r.gold ?? ''} ${r.ownerName ?? ''} ${r.reason}`.toLowerCase().includes(query.toLowerCase())) && (view === 'all' || ['factor','inheritance'].includes(r.status)));
   $('result-count').textContent = course.confirmed ? `${rows.length}件を表示 / 優先度順` : '詳細発表待ち';
   if (!course.confirmed) $('skill-list').innerHTML = `<div class="empty-state"><span class="empty-icon">◇</span><h3>コースが決まったら、準備を。</h3><p>現在発表されているのは「${course.surface}・${course.distanceType}」。競馬場や距離が判明した時点で、対応コースと推奨データを追加できます。</p><a href="${SOURCES.official.url}" target="_blank" rel="noopener noreferrer">公式の予定を確認する ↗</a></div>`;
   else if (!rows.length) $('skill-list').innerHTML = `<div class="empty-state"><span class="empty-icon">✓</span><h3>該当するスキルはありません</h3><p>検索・カテゴリ・見送り設定を確認してください。</p></div>`;
