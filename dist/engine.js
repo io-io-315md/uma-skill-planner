@@ -1,5 +1,6 @@
 import { COURSES, RECOMMENDATIONS, STYLES } from './recommendations.js';
 import { resolvePriority, PRIORITIES } from './priorities.js';
+import { canUseSupport } from './support-picker.js';
 export { PRIORITIES } from './priorities.js';
 
 export const TYPE_LABELS = { speed: 'スピード', stamina: 'スタミナ', power: 'パワー', guts: '根性', wit: '賢さ', friend: '友人', group: 'グループ' };
@@ -30,7 +31,7 @@ export function normalizeState(raw, catalog) {
   const seen = new Set();
   state.supports = Array.from({ length: 6 }, (_, i) => {
     const s = catalog.supports.find(c => c.id === Number(state.supports?.[i]));
-    if (!s || seen.has(s.characterId) || s.characterId === char?.characterId) return null;
+    if (!canUseSupport(s) || seen.has(s.characterId) || s.characterId === char?.characterId) return null;
     seen.add(s.characterId); return s.id;
   });
   for (const key of ['supplied','prepared','excluded']) state[key] = Array.isArray(state[key]) ? [...new Set(state[key].filter(x => typeof x === 'string'))] : [];

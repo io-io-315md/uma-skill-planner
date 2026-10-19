@@ -26,7 +26,7 @@ const supports = read('gametora-support-cards.json').filter(c => c.release <= '2
   const curatedIds = new Set(events.flatMap(e => e.choices ? e.choices.flatMap(ch => ch.skills.map(s => s.skillId)) : (e.skills ?? []).map(s => s.skillId)));
   return {
     id: c.support_id, characterId: c.char_id, name: `${c.title_ja ?? ''}${c.name_jp}`, title: c.title_ja ?? '', characterName: c.name_jp,
-    rarity: ['','R','SR','SSR'][c.rarity], type: c.type === 'intelligence' ? 'wit' : c.type,
+    rarity: ['','R','SR','SSR'][c.rarity], type: c.type === 'intelligence' ? 'wit' : c.type, releaseDate: c.release,
     hintSkills: c.hints?.hint_skills ?? [],
     eventSkills: (c.event_skills ?? []).filter(id => !curatedIds.has(id)),
     events: events.map(e => ({ id: e.id, label: e.label, selection: e.selection, skills: (e.skills ?? []).map(s => s.skillId), choices: e.choices?.map(ch => ({ id: ch.id, label: ch.label, skills: ch.skills.map(s => s.skillId) })) ?? [], defaultChoiceId: e.defaultChoiceId })),

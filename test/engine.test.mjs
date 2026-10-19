@@ -27,7 +27,7 @@ test('覚醒を最大とし、自前の金スキルが下位白もカバーす�
   assert.equal(make({characterId:106803,awakening:1}).awakening,5);
 });
 test('白ヒントは金スキルをカバーしない',()=>{
-  const support=catalog.supports.find(s=>s.hintSkills.includes(202482)&&!s.eventSkills.includes(202481)&&!s.events.some(e=>e.skills.includes(202481)||e.choices.some(c=>c.skills.includes(202481))));
+  const support=catalog.supports.find(s=>s.rarity==='SSR'&&s.hintSkills.includes(202482)&&!s.eventSkills.includes(202481)&&!s.events.some(e=>e.skills.includes(202481)||e.choices.some(c=>c.skills.includes(202481))));
   assert.ok(support);
   const a=analyze(make({style:'先行',supports:[support.id]}),catalog);
   assert.notEqual(row(a,'本領発揮').status,'factor');assert.equal(row(a,'本領発揮').goldMissing,true);
@@ -45,7 +45,7 @@ test('本育成はコースに合う金スキル択を初期選択し、他の�
   assert.equal(row(analyze(state,catalog),'勇気の一歩').goldMissing,true);
 });
 test('育成キャラ本人・同じキャラの別サポカは重複できない',()=>{
-  const own=catalog.supports.find(s=>s.characterId===1068),others=catalog.supports.filter(s=>s.characterId===1001);
+  const own=catalog.supports.find(s=>s.characterId===1068&&s.rarity==='SSR'),others=catalog.supports.filter(s=>s.characterId===1001&&s.rarity==='SSR');
   const state=make({characterId:106801,supports:[own.id,others[0].id,others[1].id,others[0].id]});
   assert.equal(state.supports[0],null);assert.equal(state.supports[1],others[0].id);assert.equal(state.supports[2],null);assert.equal(state.supports[3],null);
 });

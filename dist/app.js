@@ -4,6 +4,7 @@ import { needsFactor } from './factor-planner.js';
 import { createFactorUI } from './factor-ui.js';
 import { artwork } from './ui.js';
 import { createTierUI } from './tier-ui.js';
+import { selectSupportCandidates } from './support-picker.js';
 
 const $ = id => document.getElementById(id);
 const escape = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -124,11 +125,12 @@ function renderPicker() {
   const char = analysis.index.characters.get(profile.characterId);
   const mainChar=analysis.index.characters.get(state.characterId);
   const selectedChars = new Set(profile.supports.filter((_,i) => i !== picker.slot).map(id => analysis.index.supports.get(id)?.characterId));
-  const candidates = (kind === 'character' ? catalog.characters : catalog.supports).filter(c => (kind !== 'character'||picker.context!=='farming'||c.characterId!==mainChar?.characterId) && (kind !== 'support' || (!selectedChars.has(c.characterId) && c.characterId !== char?.characterId)) && (picker.type === 'すべて' || c.type === picker.type) && c.name.toLowerCase().replace(/[\s\[\]「」]/g,'').includes(text));
-  candidates.sort((a,b) => kind==='character'?a.characterId-b.characterId||a.id-b.id:a.characterName.localeCompare(b.characterName,'ja') || (b.rarity ?? '').localeCompare(a.rarity ?? '') || a.id-b.id);
+  const candidates = kind==='support'
+    ? selectSupportCandidates(catalog.supports,{context:picker.context,traineeCharacterId:char?.characterId,excludedCharacterIds:selectedChars,type:picker.type,query:text})
+    : catalog.characters.filter(c=>(picker.context!=='farming'||c.characterId!==mainChar?.characterId)&&c.name.toLowerCase().replace(/[\s\[\]「」]/g,'').includes(text)).sort((a,b)=>a.characterId-b.characterId||a.id-b.id);
   $('picker-results').classList.toggle('character-picker-grid',kind==='character');
   $('picker-filters').innerHTML = kind === 'support' ? ['すべて','speed','stamina','power','guts','wit','friend','group'].map(type => `<button class="category-button ${picker.type === type ? 'active' : ''}" data-picker-type="${type}">${TYPE_LABELS[type] ?? type}</button>`).join('') : '';
-  $('picker-results').innerHTML = `<p class="picker-summary">${candidates.length}件${kind === 'support' ? ' / 併用できないカードは除外' : ''}</p>` + candidates.map(c => `<button class="picker-result ${kind==='character'?'character-picker-result':''}" data-pick="${c.id}">${artwork(c)}<span class="picker-result-name"><small>${escape(c.title)}</small><strong>${escape(c.characterName)}</strong>${kind==='support'?`<small>${TYPE_LABELS[c.type]}</small>`:''}</span>${kind === 'support' ? `<span class="picker-result-rarity">${c.rarity}</span>` : ''}</button>`).join('');
+  $('picker-results').innerHTML = `<p class="picker-summary">${candidates.length}件${kind === 'support' ? ` / ${picker.context==='farming'?'SSR・SR・R':'SSRのみ'} / 実装日の新しい順` : ''}</p>` + candidates.map(c => `<button class="picker-result ${kind==='character'?'character-picker-result':''}" data-pick="${c.id}">${artwork(c)}<span class="picker-result-name"><small>${escape(c.title)}</small><strong>${escape(c.characterName)}</strong>${kind==='support'?`<small>${TYPE_LABELS[c.type]} · ${escape((c.releaseDate??'実装日未登録').replaceAll('-','.'))}</small>`:''}</span>${kind === 'support' ? `<span class="picker-result-rarity">${c.rarity}</span>` : ''}</button>`).join('');
 }
 function openInfo(title, html) { $('info-title').textContent = title; $('info-content').innerHTML = html; $('info-dialog').showModal(); }
 function showSources() {

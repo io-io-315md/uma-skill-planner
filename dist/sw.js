@@ -1,6 +1,6 @@
-const CACHE='umaplan-v6';
+const CACHE='umaplan-v7';
 const BASE=new URL('./',self.location).href;
-const FILES=['./','index.html','style.css?v=1.3.0','layout.css?v=1.3.0','factor.css?v=1.3.0','tier.css?v=1.3.0','app.js?v=1.3.0','engine.js','recommendations.js','priorities.js','factor-planner.js','factor-ui.js','ui.js','character-tiers.js','tier-ui.js','data/catalog.json','icon.svg','manifest.webmanifest'].map(p=>new URL(p,BASE).href);
+const FILES=['./','index.html','style.css?v=1.4.0','layout.css?v=1.4.0','factor.css?v=1.4.0','tier.css?v=1.4.0','app.js?v=1.4.0','engine.js','recommendations.js','priorities.js','factor-planner.js','factor-ui.js','ui.js','character-tiers.js','tier-ui.js','support-picker.js','data/catalog.json','icon.svg','manifest.webmanifest'].map(p=>new URL(p,BASE).href);
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES.map(url=>new Request(url,{cache:'no-cache'})))));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('umaplan-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||!url.href.startsWith(BASE))return;event.respondWith(fetch(event.request,{cache:'no-cache'}).then(response=>{if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));}return response;}).catch(()=>caches.match(event.request).then(cached=>cached||Response.error())));});

@@ -25,7 +25,7 @@
 .tier-row-a th{background:#f1e3bf;color:#8b6b27}
 .tier-row-b th{background:#dfe8d7;color:#567545}
 .tier-row td{background:#f7f8f4;border:1px solid var(--line);border-left:0;border-radius:0 9px 9px 0;padding:8px;vertical-align:top}
-.tier-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:start}
+.tier-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:start}
 .tier-card{min-width:0;border:1px solid #e8ecdf;border-radius:8px;background:white;overflow:hidden}
 .tier-card-selected{border-color:#7f9e6d;box-shadow:0 0 0 1px #7f9e6d}
 .tier-card>summary{list-style:none;cursor:pointer;padding:7px;display:flex;align-items:center;flex-direction:column;text-align:center}
@@ -61,6 +61,7 @@
 .tier-pending{padding:35px 12px;text-align:center}
 .tier-pending h3{font-size:16px}
 .tier-pending p{font-size:12px;line-height:1.9;margin-top:13px;color:var(--muted)}
+@media(min-width:701px) and (max-width:900px){.tier-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){
  .tier-button{margin-bottom:12px}
  .tier-dialog .dialog-heading{padding:16px}
