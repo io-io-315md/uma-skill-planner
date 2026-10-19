@@ -1,10 +1,11 @@
 import { COURSES, RECOMMENDATIONS, STYLES } from './recommendations.js';
 import { resolvePriority, PRIORITIES } from './priorities.js';
-import { canUseSupport } from './support-picker.js';
+import { normalizeMainSupports, FIXED_SUPPORT_ID, FIXED_SUPPORT_SLOT, RENTAL_SUPPORT_SLOT } from './deck-rules.js';
+import { skillMatchesRace } from './support-usage.js';
 export { PRIORITIES } from './priorities.js';
 
 export const TYPE_LABELS = { speed: 'スピード', stamina: 'スタミナ', power: 'パワー', guts: '根性', wit: '賢さ', friend: '友人', group: 'グループ' };
-export const DEFAULT_STATE = { version: 2, courseId: COURSES[0].id, style: '先行', characterId: null, awakening: 5, supports: [null,null,null,null,null,null], eventChoices: {}, supplied: [], prepared: [], excluded: [], farmingPlans: {}, plans: [] };
+export const DEFAULT_STATE = { version: 2, courseId: COURSES[0].id, style: '先行', characterId: null, awakening: 5, supports: [null,null,null,null,null,FIXED_SUPPORT_ID], eventChoices: {}, supplied: [], prepared: [], excluded: [], farmingPlans: {}, plans: [] };
 
 export function normalizeFarmingProfile(raw, catalog) {
   const profile=raw&&typeof raw==='object'?raw:{};
@@ -28,12 +29,7 @@ export function normalizeState(raw, catalog) {
   else state.characterId = Number(state.characterId);
   const char = catalog.characters.find(c => c.id === state.characterId);
   state.awakening = char ? char.awakening.length + 1 : 5;
-  const seen = new Set();
-  state.supports = Array.from({ length: 6 }, (_, i) => {
-    const s = catalog.supports.find(c => c.id === Number(state.supports?.[i]));
-    if (!canUseSupport(s) || seen.has(s.characterId) || s.characterId === char?.characterId) return null;
-    seen.add(s.characterId); return s.id;
-  });
+  state.supports=normalizeMainSupports(state.supports,catalog,char?.characterId);
   for (const key of ['supplied','prepared','excluded']) state[key] = Array.isArray(state[key]) ? [...new Set(state[key].filter(x => typeof x === 'string'))] : [];
   if (!state.eventChoices || typeof state.eventChoices !== 'object' || Array.isArray(state.eventChoices)) state.eventChoices = {};
   const eventIndex=createIndex(catalog);
@@ -70,9 +66,11 @@ export function resolvedEventChoice(event, state, index, purpose='main') {
   if(explicit)return explicit;
   if(purpose!=='main'||!choices.some(c=>c.skills.some(id=>index.skills.get(id)?.rarity===2)))return null;
   const recommendations=RECOMMENDATIONS.filter(r=>r.courses.includes(state.courseId)&&r.styles.includes(state.style));
+  const course=COURSES.find(c=>c.id===state.courseId)??{};
   const score=choice=>{
     const ids=new Set(choice.skills.flatMap(id=>lowerClosure(id,index)));
-    return recommendations.reduce((sum,r)=>sum+(ids.has(index.normalByName.get(r.name)?.id)?[0,12,4,1][resolvePriority(r,state.courseId,state.style).priority]:0),0)+choice.skills.filter(id=>index.skills.get(id)?.rarity===2).length/100;
+    const inactiveGold=choice.skills.filter(id=>index.skills.get(id)?.rarity===2&&!skillMatchesRace(index.skills.get(id),course,state.style)).length;
+    return -1000*inactiveGold+recommendations.reduce((sum,r)=>sum+(ids.has(index.normalByName.get(r.name)?.id)?[0,12,4,1][resolvePriority(r,state.courseId,state.style).priority]:0),0)+choice.skills.filter(id=>index.skills.get(id)?.rarity===2).length/100;
   };
   return [...choices].sort((a,b)=>score(b)-score(a)||(a.id===event.defaultChoiceId?-1:b.id===event.defaultChoiceId?1:0))[0]??null;
 }
@@ -144,7 +142,7 @@ export function analyze(state, catalog, { purpose='main' }={}) {
 export function exportChecklist(state, analysis) {
   const { course, index } = analysis;
   const char = index.characters.get(state.characterId);
-  const lines = [`UMAPLAN｜${course.year}年${course.date} ${course.title}`, course.confirmed ? `${course.venue} ${course.surface}${course.distance}m / ${course.turn} / ${course.season} / ${course.weather} / ${course.going}` : 'コース詳細未発表', `育成：${char?.name ?? '未選択'} / ${state.style}（覚醒は最大で判定）`, '', 'サポート編成', ...state.supports.map((id,i) => `${i+1}. ${index.supports.get(id)?.name ?? '未選択'}`), ''];
+  const lines = [`UMAPLAN｜${course.year}年${course.date} ${course.title}`, course.confirmed ? `${course.venue} ${course.surface}${course.distance}m / ${course.turn} / ${course.season} / ${course.weather} / ${course.going}` : 'コース詳細未発表', `育成：${char?.name ?? '未選択'} / ${state.style}（覚醒は最大で判定）`, '', 'サポート編成', ...state.supports.map((id,i) => `${i+1}. ${index.supports.get(id)?.name ?? '未選択'} [${i===FIXED_SUPPORT_SLOT?'自前・固定':i===RENTAL_SUPPORT_SLOT?'レンタル':'自前'}]`), ''];
   for (const [title, pred] of [
     ['白因子で補う候補', r => r.status === 'factor' && r.factorEligible],
     ['親からの継承候補', r => r.status === 'inheritance'],

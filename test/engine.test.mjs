@@ -67,7 +67,7 @@ test('別経路・見送り・準備チェックを出力に反映する',()=>{
 });
 test('不正な保存値と未対応IDを補正する',()=>{
   const state=make({courseId:'bad',style:'大逃げ',characterId:999,supports:[999],eventChoices:null,awakening:99,prepared:'bad',plans:[null,{label:'x',state:{}},'bad']});
-  assert.equal(state.courseId,'2026-11-loh');assert.equal(state.style,'先行');assert.equal(state.characterId,null);assert.equal(state.awakening,5);assert.deepEqual(state.supports,[null,null,null,null,null,null]);assert.deepEqual(state.prepared,[]);assert.equal(state.plans.length,1);
+  assert.equal(state.courseId,'2026-11-loh');assert.equal(state.style,'先行');assert.equal(state.characterId,null);assert.equal(state.awakening,5);assert.deepEqual(state.supports,[null,null,null,null,null,30305]);assert.deepEqual(state.prepared,[]);assert.equal(state.plans.length,1);
 });
 test('覚醒Lv6/7と旧カードを扱える',()=>{
   assert.equal(make({characterId:100101,awakening:1}).awakening,7);

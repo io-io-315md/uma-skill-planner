@@ -4,10 +4,18 @@ import { RECOMMENDATIONS, COURSES, STYLES } from '../dist/recommendations.js';
 import { createIndex, analyze, normalizeState } from '../dist/engine.js';
 import { PRIORITIES } from '../dist/priorities.js';
 import { COURSE_TIERS, TIER_SOURCES, TIER_ORDER, getCourseTier } from '../dist/character-tiers.js';
+import {createSupportUsageIndex} from '../dist/support-usage.js';
+import {SUPPORT_ART_TYPES} from '../dist/ui.js';
 const catalog = JSON.parse(fs.readFileSync(new URL('../dist/data/catalog.json', import.meta.url)));
 const index = createIndex(catalog);
 for (const list of [catalog.characters,catalog.supports,catalog.skills]) assert.equal(new Set(list.map(s=>s.id)).size,list.length,'IDs must be unique');
 for (const support of catalog.supports) assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(support.releaseDate),'Missing support release date: '+support.id);
+const usage=createSupportUsageIndex(catalog);
+for(const support of catalog.supports){
+  assert.ok(usage.get(support.id).contexts.length,'Missing support category: '+support.id);
+  for(const id of usage.get(support.id).skillIds)assert.ok(index.skills.get(id)?.description&&index.skills.get(id)?.targets,'Missing support skill targets: '+id);
+}
+for(const type of Object.keys(SUPPORT_ART_TYPES))assert.ok(fs.statSync(new URL('../dist/assets/support-types/'+type+'.png',import.meta.url)).size>100);
 for (const r of RECOMMENDATIONS) {
   const skill=(r.inherited?index.uniqueByName:index.normalByName).get(r.name);
   assert.ok(skill, `Unresolved skill: ${r.name}`);

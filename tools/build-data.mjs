@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { enrichSupportSkills } from './enrich-support-skills.mjs';
 const root = path.resolve(import.meta.dirname, '..');
 const read = name => JSON.parse(fs.readFileSync(path.join(root, 'research', name), 'utf8').replace(/^\uFEFF/, ''));
 const rawSkills = read('gametora-skills.json');
@@ -37,6 +38,7 @@ const supports = read('gametora-support-cards.json').filter(c => c.release <= '2
 // ☆1/2固有と☆3固有で継承版IDを共有する場合は、後の上位名称を採用する。
 const uniqueSkills = [...new Map(skills.map(s => [s.id,s])).values()];
 const catalog = { retrievedAt: '2026-10-18', sources: { database: 'https://gametora.com/data/manifests/umamusume.json', events: 'https://github.com/Tsuyuchan-jp/umamusume-data', artwork: { characters:'https://uma.pure-db.com/ja-jp/', supports:'https://gametora.com/ja/umamusume/supports' } }, skills: uniqueSkills, characters, supports };
+enrichSupportSkills(catalog,rawSkills);
 fs.mkdirSync(path.join(root, 'dist', 'data'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist', 'data', 'catalog.json'), JSON.stringify(catalog));
 console.log(`Catalog: ${characters.length} characters, ${supports.length} supports, ${uniqueSkills.length} skills; ${supports.filter(s => s.events.length).length} cards with detailed event choices.`);

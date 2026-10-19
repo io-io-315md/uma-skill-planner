@@ -5,12 +5,14 @@ import { createFactorUI } from './factor-ui.js';
 import { artwork } from './ui.js';
 import { createTierUI } from './tier-ui.js';
 import { selectSupportCandidates } from './support-picker.js';
+import { createSupportUsageIndex, DISTANCES, RUN_STYLES, targetLabel } from './support-usage.js';
+import { FIXED_SUPPORT_SLOT, RENTAL_SUPPORT_SLOT } from './deck-rules.js';
 
 const $ = id => document.getElementById(id);
 const escape = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const STORE = 'umaplan.v1';
 const statusLabels = { factor:'白因子で補う候補', inheritance:'親から継承', available:'編成から取得候補', manual:'別ルートで取得', 'own-unique':'本体固有・継承不要', 'event-check':'イベント条件を確認', incompatible:'同キャラの継承不可' };
-let catalog, state, analysis, factorUI, tierUI;
+let catalog, state, analysis, factorUI, tierUI, supportUsage;
 let view = 'factor', category = 'すべて', priorityFilter = 'all', query = '', showExcluded = false;
 let picker = { kind:'character', slot:0, type:'すべて', context:'main' };
 let toastTimer;
@@ -39,7 +41,8 @@ function renderSetup() {
   $('support-count').textContent=`${state.supports.filter(Boolean).length} / 6`;
   $('support-slots').innerHTML=state.supports.map((id,i)=>{
     const support=analysis.index.supports.get(id);
-    return `<div class="support-slot"><div class="support-slot-main"><span class="slot-number">${String(i+1).padStart(2,'0')}</span><button class="slot-select visual-slot-select" data-slot="${i}" aria-label="サポート${i+1}を選択">${support?`${artwork(support)}<span class="slot-copy"><span class="slot-title">${escape(support.title)}</span><strong>${escape(support.characterName)}</strong><small>${TYPE_LABELS[support.type]}・${support.rarity}</small></span>`:`<span class="empty-slot-art">＋</span><strong class="empty-title">サポートを選択${i===5?' / レンタル':''}</strong>`}</button>${support?`<button class="remove-support" data-remove="${i}" aria-label="サポート${i+1}を外す">×</button>`:''}</div>${(support?.events??[]).filter(e=>e.selection==='single').map(event=>{
+    const fixed=i===FIXED_SUPPORT_SLOT,tag=fixed?'div':'button',assignment=fixed?'自前・固定':i===RENTAL_SUPPORT_SLOT?'レンタル':'自前';
+    return `<div class="support-slot ${fixed?'fixed-support-slot':''}"><div class="support-slot-main"><span class="slot-number">${String(i+1).padStart(2,'0')}</span><${tag} class="slot-select visual-slot-select" ${fixed?'role="group" aria-label="サポート6：SSRたづな・自前固定"':`data-slot="${i}" aria-label="サポート${i+1}を選択"`}>${support?`${artwork(support)}<span class="slot-copy"><span class="slot-assignment ${fixed?'fixed-assignment':''}">${assignment}</span><span class="slot-title">${escape(support.title)}</span><strong>${escape(support.characterName)}</strong><small>${TYPE_LABELS[support.type]}・${support.rarity}</small></span>`:`<span class="empty-slot-art">＋</span><span><span class="slot-assignment">${assignment}</span><strong class="empty-title">サポートを選択</strong></span>`}</${tag}>${support&&!fixed?`<button class="remove-support" data-remove="${i}" aria-label="サポート${i+1}を外す">×</button>`:''}</div>${(support?.events??[]).filter(e=>e.selection==='single').map(event=>{
       const choices=eventChoicesForPurpose(event,analysis.index,'main');
       const chosen=resolvedEventChoice(event,state,analysis.index,'main');
       const explicit=choices.some(c=>c.id===state.eventChoices[event.id]);
@@ -112,7 +115,8 @@ function renderSaved() {
   $('saved-plans').innerHTML = state.plans.map((plan,i) => `<div class="saved-plan"><button data-load-plan="${i}">${escape(plan.label)}</button><button data-delete-plan="${i}" aria-label="保存プラン${i+1}を削除">×</button></div>`).join('');
 }
 function openPicker(kind,slot=0,context='main') {
-  picker = {kind,slot,type:'すべて',context};
+  if(kind==='support'&&context==='main'&&slot===FIXED_SUPPORT_SLOT)return;
+  picker = {kind,slot,type:'すべて',context,distance:context==='main'?(analysis.course.distanceType??'すべて'):'すべて',style:context==='main'?state.style:'すべて',dirtOnly:context==='main'&&analysis.course.surface==='ダート',allUsage:context!=='main'};
   $('picker-title').textContent = `${context==='farming'?'因子周回':'本育成'}：${kind === 'character' ? 'ウマ娘を選択' : `サポート ${slot+1} を選択`}`;
   $('picker-eyebrow').textContent = kind === 'character' ? 'SELECT TRAINEE' : 'BUILD YOUR DECK';
   $('picker-search').value = '';
@@ -126,11 +130,29 @@ function renderPicker() {
   const mainChar=analysis.index.characters.get(state.characterId);
   const selectedChars = new Set(profile.supports.filter((_,i) => i !== picker.slot).map(id => analysis.index.supports.get(id)?.characterId));
   const candidates = kind==='support'
-    ? selectSupportCandidates(catalog.supports,{context:picker.context,traineeCharacterId:char?.characterId,excludedCharacterIds:selectedChars,type:picker.type,query:text})
+    ? selectSupportCandidates(catalog.supports,{context:picker.context,traineeCharacterId:char?.characterId,excludedCharacterIds:selectedChars,type:picker.type,query:text,usageIndex:supportUsage,
+      usageFilter:picker.allUsage?null:{distance:picker.distance,style:picker.style,dirtOnly:picker.dirtOnly,surface:picker.dirtOnly?'ダート':analysis.course.surface}})
     : catalog.characters.filter(c=>(picker.context!=='farming'||c.characterId!==mainChar?.characterId)&&c.name.toLowerCase().replace(/[\s\[\]「」]/g,'').includes(text)).sort((a,b)=>a.characterId-b.characterId||a.id-b.id);
   $('picker-results').classList.toggle('character-picker-grid',kind==='character');
+  renderUsageFilters(kind==='support'&&picker.context==='main');
   $('picker-filters').innerHTML = kind === 'support' ? ['すべて','speed','stamina','power','guts','wit','friend','group'].map(type => `<button class="category-button ${picker.type === type ? 'active' : ''}" data-picker-type="${type}">${TYPE_LABELS[type] ?? type}</button>`).join('') : '';
-  $('picker-results').innerHTML = `<p class="picker-summary">${candidates.length}件${kind === 'support' ? ` / ${picker.context==='farming'?'SSR・SR・R':'SSRのみ'} / 実装日の新しい順` : ''}</p>` + candidates.map(c => `<button class="picker-result ${kind==='character'?'character-picker-result':''}" data-pick="${c.id}">${artwork(c)}<span class="picker-result-name"><small>${escape(c.title)}</small><strong>${escape(c.characterName)}</strong>${kind==='support'?`<small>${TYPE_LABELS[c.type]} · ${escape((c.releaseDate??'実装日未登録').replaceAll('-','.'))}</small>`:''}</span>${kind === 'support' ? `<span class="picker-result-rarity">${c.rarity}</span>` : ''}</button>`).join('');
+  $('picker-results').innerHTML = `<p class="picker-summary">${candidates.length}件${kind === 'support' ? ` / ${picker.context==='farming'?'SSR・SR・R':'SSRのみ'} / 実装日の新しい順` : ''}</p>` + candidates.map(c =>kind==='support'?renderSupportCandidate(c):`<button class="picker-result character-picker-result" data-pick="${c.id}">${artwork(c)}<span class="picker-result-name"><small>${escape(c.title)}</small><strong>${escape(c.characterName)}</strong></span></button>`).join('');
+  if(!candidates.length)$('picker-results').innerHTML+='<p class="picker-empty">該当するカードはありません。種類・用途・検索条件を変更してください。</p>';
+}
+
+function renderUsageFilters(visible) {
+  const container=$('picker-usage-filters');container.hidden=!visible;if(!visible){container.innerHTML='';return;}
+  const chips=(values,axis,current)=>values.map(v=>`<button class="usage-chip ${!picker.allUsage&&v===current?'active':''}" data-usage-${axis}="${v}" aria-pressed="${!picker.allUsage&&v===current}">${v}</button>`).join('');
+  container.innerHTML=`<div class="usage-filter-top"><strong>スキルの用途</strong><button class="usage-reset" data-usage-current>今回の条件に合わせる</button><button class="usage-all ${picker.allUsage?'active':''}" data-usage-all aria-pressed="${picker.allUsage}">全SSRを表示</button></div><div class="usage-axis" role="group" aria-label="サポカの距離・ダート"><span>距離</span><div>${chips(DISTANCES,'distance',picker.distance)}<button class="usage-chip usage-dirt ${picker.dirtOnly?'active':''}" data-usage-dirt aria-pressed="${picker.dirtOnly}">ダート</button></div></div><div class="usage-axis" role="group" aria-label="サポカの脚質"><span>脚質</span><div>${chips(RUN_STYLES,'style',picker.style)}</div></div><p class="usage-filter-note">汎用カードも含めて表示。金スキルの択を基準に分類し、所持ヒントは各カードで確認できます。</p>`;
+}
+
+function renderSupportCandidate(card) {
+  const usage=supportUsage.get(card.id),skill=id=>analysis.index.skills.get(id);
+  const allIds=usage.skillIds,gold=usage.goldSkillIds;
+  const events=allIds.filter(id=>!gold.includes(id)&&!card.hintSkills.includes(id));
+  const choices=card.events.filter(e=>e.selection==='single').flatMap(e=>e.choices.filter(c=>c.skills.some(id=>skill(id)?.rarity===2)));
+  const list=(ids,descriptions=false)=>`<ul>${ids.map(id=>{const s=skill(id);return `<li><strong>${escape(s?.name??id)}</strong><span>${escape(targetLabel(s?.targets))}</span>${descriptions?`<p>${escape(s?.description??'')}</p>`:''}</li>`;}).join('')}</ul>`;
+  return `<article class="support-picker-card"><button class="picker-result" data-pick="${card.id}">${artwork(card)}<span class="picker-result-name"><small>${escape(card.title)}</small><strong>${escape(card.characterName)}</strong><small>${escape((card.releaseDate??'実装日未登録').replaceAll('-','.'))} · ${card.rarity}</small><span class="support-usage-label">${escape(usage.label)}</span>${usage.hasDirt?'<span class="support-dirt-label">ダートスキルあり</span>':''}</span></button><details class="support-skill-details"><summary>対象スキルを見る</summary><div>${gold.length?'<h4>金スキル</h4>'+list(gold,true):''}${choices.length?'<h4>金スキルのイベント択</h4>'+choices.map(c=>'<p class="support-choice">'+escape(c.label)+'</p>').join(''):''}${usage.uncertain?'<p class="support-skill-note">金スキルの対象を優先した用途分類です。未登録のイベント択は取得元で確認してください。</p>':''}${card.hintSkills.length?'<h4>所持ヒント</h4>'+list(card.hintSkills):''}${events.length?'<h4>イベントの白スキル</h4>'+list(events):''}<a href="${escape(card.source)}" target="_blank" rel="noopener noreferrer">カード・イベントの取得元 ↗</a></div></details></article>`;
 }
 function openInfo(title, html) { $('info-title').textContent = title; $('info-content').innerHTML = html; $('info-dialog').showModal(); }
 function showSources() {
@@ -150,6 +172,11 @@ document.addEventListener('click', event => {
   else if (d.priority !== undefined) { priorityFilter=d.priority;renderResults(); }
   else if (d.category) { category=d.category;renderResults(); }
   else if (d.pickerType) { picker.type=d.pickerType;renderPicker(); }
+  else if (d.usageAll!==undefined) { picker.allUsage=true;picker.distance='すべて';picker.style='すべて';picker.dirtOnly=false;renderPicker(); }
+  else if (d.usageCurrent!==undefined) { picker.allUsage=false;picker.distance=analysis.course.distanceType??'すべて';picker.style=state.style;picker.dirtOnly=analysis.course.surface==='ダート';renderPicker(); }
+  else if (d.usageDistance!==undefined) { picker.distance=!picker.allUsage&&picker.distance===d.usageDistance?'すべて':d.usageDistance;picker.allUsage=false;renderPicker();document.querySelector('[data-usage-distance="'+d.usageDistance+'"]')?.focus(); }
+  else if (d.usageStyle!==undefined) { picker.style=!picker.allUsage&&picker.style===d.usageStyle?'すべて':d.usageStyle;picker.allUsage=false;renderPicker();document.querySelector('[data-usage-style="'+d.usageStyle+'"]')?.focus(); }
+  else if (d.usageDirt!==undefined) { picker.allUsage=false;picker.dirtOnly=!picker.dirtOnly;renderPicker(); }
   else if (d.pick) {
     const id=Number(d.pick);
     if(picker.context==='farming'){if(picker.kind==='character')factorUI.chooseCharacter(id);else factorUI.chooseSupport(id,picker.slot);}
@@ -191,6 +218,7 @@ async function boot() {
   try {
     const response=await fetch(new URL('./data/catalog.json',import.meta.url));if(!response.ok)throw new Error(`HTTP ${response.status}`);
     catalog=await response.json();
+    supportUsage=createSupportUsageIndex(catalog);
     let saved;try{saved=JSON.parse(localStorage.getItem(STORE)??'null');}catch{saved=null;}
     state=normalizeState(saved,catalog);
     factorUI=createFactorUI({catalog,getState:()=>state,update,openPicker});
