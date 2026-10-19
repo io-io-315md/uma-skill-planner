@@ -3,6 +3,7 @@ import { resolvePriority, PRIORITIES } from './priorities.js';
 import { normalizeMainSupports, normalizeFarmingSupports, FIXED_SUPPORT_ID, FIXED_SUPPORT_SLOT, RENTAL_SUPPORT_SLOT } from './deck-rules.js';
 import { RED_FACTORS, redFactorDetails } from './factor-targets.js';
 import { skillMatchesRace } from './support-usage.js';
+import { FARMING_POLICY, INHERITED_FACTOR_NOTE, usesInheritedFactor } from './farming-policy.js';
 export { PRIORITIES } from './priorities.js';
 
 export const TYPE_LABELS = { speed: 'スピード', stamina: 'スタミナ', power: 'パワー', guts: '根性', wit: '賢さ', friend: '友人', group: 'グループ' };
@@ -18,6 +19,7 @@ export function normalizeFarmingProfile(raw, catalog) {
     eventChoices:profile.eventChoices&&typeof profile.eventChoices==='object'&&!Array.isArray(profile.eventChoices)?Object.fromEntries(Object.entries(profile.eventChoices).filter(([k,v])=>k.startsWith('evt_')&&typeof v==='string')):{},
     learned:Array.isArray(profile.learned)?[...new Set(profile.learned.filter(s=>typeof s==='string'))]:[],
     anchorSupportId:catalog.supports.some(s=>s.id===Number(profile.anchorSupportId))?Number(profile.anchorSupportId):null,
+    farmingPolicy:profile.farmingPolicy===FARMING_POLICY?FARMING_POLICY:'',
     scenario:profile.scenario==='ura'?'ura':'support'
   };
 }
@@ -172,6 +174,7 @@ export function exportChecklist(state, analysis) {
   const farming=Object.entries(state.farmingPlans??{}).filter(([key])=>key.startsWith(prefix));
   if(farming.length){
     lines.push('因子周回プラン（本育成とは別編成）');
+    if(analysis.rows.some(r=>!r.excluded&&r.status==='factor'&&usesInheritedFactor(r)))lines.push(INHERITED_FACTOR_NOTE,'継承ヒントを受け取って習得し、終了時に白因子を確認。継承・因子化は確約しません。');
     for(const[key,plan]of farming){
       lines.push(`対象因子：${key.slice(prefix.length)}`,`周回キャラ：${index.characters.get(plan.characterId)?.name??'未選択'}`,`取得方法：${plan.scenario==='ura'?'URAの対決イベントも使用':'サポートのヒント・イベント'}`);
       const red=redFactorDetails(plan,analysis);lines.push(`指定する赤因子：${red.type}（目標★${red.stars}・星数は抽選）`);

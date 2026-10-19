@@ -1,6 +1,7 @@
 import { acquisitionRoutes, lowerClosure, normalizeFarmingProfile } from './engine.js';
 import { FIXED_SUPPORT_ID } from './deck-rules.js';
 import { defaultRedFactor } from './factor-targets.js';
+import { FARMING_POLICY, usesInheritedFactor } from './farming-policy.js';
 
 // These are ranking weights, not measured hint/event probabilities.
 const WEIGHT={1:12,2:4,3:1};
@@ -13,11 +14,13 @@ export const URA_METHODS={
 
 export const factorPlanKey=(state,name)=>`${state.courseId}:${state.style}:${state.characterId??0}:${name}`;
 export const needsFactor=row=>!row.excluded&&(row.status==='inheritance'||row.status==='factor'&&row.factorEligible);
-export function farmingTargets(analysis,focus) {
+function allFarmingTargets(analysis,focus) {
   const rows=analysis.rows.filter(r=>!r.inherited&&r.factorEligible&&!r.excluded&&r.status==='factor');
   if(focus?.factorEligible&&!rows.some(r=>r.name===focus.name))rows.push(focus);
   return rows.sort((a,b)=>(a.name===focus?.name?-1:b.name===focus?.name?1:0)||a.priority-b.priority||a.name.localeCompare(b.name,'ja'));
 }
+export const farmingTargets=(analysis,focus)=>allFarmingTargets(analysis,focus).filter(r=>!usesInheritedFactor(r));
+export const inheritedFarmingTargets=(analysis,focus)=>allFarmingTargets(analysis,focus).filter(usesInheritedFactor);
 
 export function supportOptions(support,index) {
   let options=[{skills:new Map(),eventChoices:{}}];
@@ -73,7 +76,7 @@ export function suggestFactorPlan(state,analysis,focus,catalog,options={}) {
   const targets=farmingTargets(analysis,focus);
   const allOptions=catalog.supports.filter(s=>s.characterId!==parent?.characterId&&s.characterId!==fixed?.characterId).map(s=>supportOptions(s,analysis.index));
   const sources=candidateSources(analysis,focus,catalog,characterId);
-  const anchor=options.anchorSupportId?sources.find(s=>s.support.id===Number(options.anchorSupportId)):sources[0];
+  const anchor=options.anchorSupportId?sources.find(s=>s.support.id===Number(options.anchorSupportId)):usesInheritedFactor(focus)?null:sources[0];
   const chosen=[],usedCharacters=new Set(),types=new Map(),covered=new Set();
   const native=acquisitionRoutes({characterId,supports:fixed?[fixed.id]:[],eventChoices:{}},analysis.index,'factor');
   for(const id of native.keys())covered.add(id);
@@ -90,7 +93,31 @@ export function suggestFactorPlan(state,analysis,focus,catalog,options={}) {
     if(!next||coverageScore(next,targets,focus,covered)<=0)break;
     add(next);
   }
-  return normalizeFarmingProfile({characterId,supports:[...Array.from({length:limit},(_,i)=>chosen[i]?.support.id??null),...(fixed?[fixed.id]:[])],redFactor:defaultRedFactor(analysis),eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),anchorSupportId:selectedAnchor?.support.id,scenario:options.scenario??(!anchor&&URA_METHODS[focus.name]?'ura':'support')},catalog);
+  return normalizeFarmingProfile({characterId,supports:[...Array.from({length:limit},(_,i)=>chosen[i]?.support.id??null),...(fixed?[fixed.id]:[])],redFactor:defaultRedFactor(analysis),eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),anchorSupportId:selectedAnchor?.support.id,scenario:options.scenario??(!usesInheritedFactor(focus)&&!anchor&&URA_METHODS[focus.name]?'ura':'support'),farmingPolicy:FARMING_POLICY},catalog);
+}
+
+// Upgrade old saved decks once. Retain manual cards with any other target role,
+// character, red factors and learned checks; replace only a body-only source.
+export function refreshFarmingPolicy(profile,analysis,catalog,focus) {
+  if(profile.farmingPolicy===FARMING_POLICY)return profile;
+  const targets=farmingTargets(analysis,focus),inherited=inheritedFarmingTargets(analysis,focus);
+  const supports=[...profile.supports],eventChoices={...profile.eventChoices},vacancies=[];
+  for(let slot=0;slot<Math.min(5,supports.length);slot++){
+    const support=analysis.index.supports.get(supports[slot]);if(!support)continue;
+    const routes=acquisitionRoutes({supports:[support.id],eventChoices},analysis.index,'factor');
+    if(!inherited.some(r=>routes.has(r.skillId))||targets.some(r=>routes.has(r.skillId)))continue;
+    supports[slot]=null;vacancies.push(slot);
+    for(const event of support.events)delete eventChoices[event.id];
+  }
+  for(const slot of vacancies){
+    const used=new Set(supports.filter(Boolean).map(id=>analysis.index.supports.get(id)?.characterId));
+    used.add(analysis.index.characters.get(profile.characterId)?.characterId);
+    const covered=new Set(acquisitionRoutes({...profile,supports,eventChoices},analysis.index,'factor').keys());
+    const options=catalog.supports.filter(s=>!used.has(s.characterId)).flatMap(s=>supportOptions(s,analysis.index));
+    const next=bestOption(options,targets,focus,covered);
+    if(next&&coverageScore(next,targets,focus,covered)>0){supports[slot]=next.support.id;Object.assign(eventChoices,next.eventChoices);}
+  }
+  return normalizeFarmingProfile({...profile,supports,eventChoices,anchorSupportId:supports.includes(profile.anchorSupportId)?profile.anchorSupportId:null,farmingPolicy:FARMING_POLICY},catalog);
 }
 
 export function completeFactorChoices(profile,analysis,focus,catalog) {
@@ -108,5 +135,6 @@ export function analyzeFactorPlan(profile,analysis,focus) {
   const routes=acquisitionRoutes(profile,analysis.index,'factor');
   if(profile.scenario==='ura')for(const name of Object.keys(URA_METHODS)){const skill=analysis.index.normalByName.get(name);if(skill){const list=routes.get(skill.id)??[];routes.set(skill.id,[...list,{kind:'scenario',label:`URA：ハッピーミークとの対決「${URA_METHODS[name]}」に成功`}]);}}
   const targets=farmingTargets(analysis,focus).map(r=>({...r,farmingRoutes:routes.get(r.skillId)??[],canAcquire:routes.has(r.skillId),learned:profile.learned.includes(r.name)}));
-  return{targets,covered:targets.filter(r=>r.canAcquire),missing:targets.filter(r=>!r.canAcquire),routes,parent:analysis.index.characters.get(profile.characterId),uniqueReady:!!(focus.inherited&&profile.characterId===focus.ownerId)};
+  const inheritedTargets=inheritedFarmingTargets(analysis,focus).map(r=>({...r,farmingRoutes:routes.get(r.skillId)??[],canAcquire:routes.has(r.skillId),learned:profile.learned.includes(r.name)}));
+  return{targets,inheritedTargets,covered:targets.filter(r=>r.canAcquire),missing:targets.filter(r=>!r.canAcquire),routes,parent:analysis.index.characters.get(profile.characterId),uniqueReady:!!(focus.inherited&&profile.characterId===focus.ownerId)};
 }

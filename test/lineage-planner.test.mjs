@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { analyze, createIndex, normalizeState, normalizeLineagePlan } from '../dist/engine.js';
-import { suggestCoverageDeck, suggestLineagePlan, analyzeLineagePlan, analyzeCoverageProfile, completeCoverageChoices, lineagePlanKey, lineageSignature, exportLineagePlan, branchIndices } from '../dist/lineage-planner.js';
+import { suggestCoverageDeck, suggestLineagePlan, analyzeLineagePlan, analyzeCoverageProfile, completeCoverageChoices, lineagePlanKey, lineageSignature, exportLineagePlan, branchIndices, refreshLineagePolicy, refreshSavedFarmingPlans } from '../dist/lineage-planner.js';
+import { FARMING_POLICY } from '../dist/farming-policy.js';
 
 const catalog=JSON.parse(fs.readFileSync(new URL('../dist/data/catalog.json',import.meta.url)));
 const main=patch=>normalizeState({characterId:107601,style:'差し',supports:[30317,30304,30306,30302,30287,30305],...patch},catalog);
@@ -39,6 +40,9 @@ test('京都3000の実データでは全脚質で高を網羅し、同キャラ�
     const state=main({style}),analysis=analyze(state,catalog),before=structuredClone(state),plan=suggestLineagePlan(state,analysis,catalog),r=analyzeLineagePlan(plan,analysis);
     assert.deepEqual(state,before);
     assert.ok(r.targets.some(r=>r.priority===1));
+    assert.equal(r.inheritedTargets.find(r=>r.name==='レースの真髄・体').priority,1);
+    assert.ok(!r.targets.some(r=>r.name==='レースの真髄・体'));
+    for(const [i,node]of plan.nodes.entries())if(node.supports.includes(30283))assert.ok(r.results[i].covered.some(t=>t.farmingRoutes.some(route=>route.label.includes('パワー・ファインモーション'))),'ファインを採用するなら体以外の不足を取る役割が必要');
     assert.ok(r.targets.filter(r=>r.priority===1).every(t=>r.covered.some(r=>r.skillId===t.skillId)));
     for(const [i,node]of plan.nodes.entries()){
       const char=analysis.index.characters.get(node.characterId),cards=node.supports.filter(Boolean).map(id=>analysis.index.supports.get(id));
@@ -50,6 +54,35 @@ test('京都3000の実データでは全脚質で高を網羅し、同キャラ�
     }
     assert.ok(r.covered.every(t=>r.assignments.some(rows=>rows.some(r=>r.skillId===t.skillId))));
   }
+});
+
+test('体だけが不足する場合、6個体のサポカもURAも体のために指定しない',()=>{
+  const state=main({}),full=analyze(state,catalog),body=full.rows.find(r=>r.name==='レースの真髄・体');
+  const analysis={...full,rows:[body]},p=suggestLineagePlan(state,analysis,catalog),r=analyzeLineagePlan(p,analysis);
+  assert.ok(p.nodes.every(n=>n.supports.filter(Boolean).length===1&&n.supports[5]===30305&&n.scenario==='support'));
+  assert.deepEqual(r.covered,[]);assert.deepEqual(r.missing,[]);assert.deepEqual(r.targets,[]);
+  assert.equal(r.inheritedTargets.length,1);assert.equal(body.priority,1);
+  const text=exportLineagePlan(p,analysis,state);
+  assert.match(text,/既存因子から引き継ぐ白因子：\[高\] レースの真髄・体/);
+  assert.match(text,/フレンド因子にも含める前提：レースの真髄・体/);
+  assert.match(text,/6人の編成でも取得元が足りない白因子：なし/);
+});
+
+test('旧ツリーも体だけのカードを更新し、手動の赤因子・フレンド側・取得済みを保持する',()=>{
+  const state=main({}),full=analyze(state,catalog),body=full.rows.find(r=>r.name==='レースの真髄・体'),analysis={...full,rows:[body]};
+  const p=suggestLineagePlan(state,analysis,catalog),event=catalog.supports.find(s=>s.id===30283).events.find(e=>e.selection==='single');
+  const slot=p.nodes.findIndex(n=>analysis.index.characters.get(n.characterId)?.characterId!==1022);
+  p.nodes[slot]={...p.nodes[slot],supports:[30283,null,null,null,null,30305],eventChoices:{[event.id]:event.choices.find(c=>c.skills.includes(body.skillId)).id},learned:[body.name],farmingPolicy:''};
+  p.manual=true;p.friendSide=0;const before=structuredClone(p),updated=refreshLineagePolicy(p,analysis,catalog);
+  assert.deepEqual(p,before);assert.equal(updated.manual,true);assert.equal(updated.friendSide,0);
+  assert.deepEqual(updated.nodes.map(n=>n.characterId),p.nodes.map(n=>n.characterId));assert.deepEqual(updated.nodes.map(n=>n.redFactor),p.nodes.map(n=>n.redFactor));
+  assert.ok(!updated.nodes[slot].supports.includes(30283));assert.deepEqual(updated.nodes[slot].learned,[body.name]);
+  assert.ok(updated.nodes.every(n=>n.farmingPolicy===FARMING_POLICY));
+  const key=lineagePlanKey(state),saved={...state,lineagePlans:{[key]:p},farmingPlans:{[`${key}:${body.name}`]:p.nodes[slot]}};
+  const refreshed=refreshSavedFarmingPlans(saved,analysis,catalog);
+  assert.deepEqual(refreshed.supports,state.supports);assert.equal(saved.lineagePlans[key],p);
+  assert.ok(!refreshed.lineagePlans[key].nodes[slot].supports.includes(30283));assert.ok(!refreshed.farmingPlans[`${key}:${body.name}`].supports.includes(30283));
+  assert.equal(refreshSavedFarmingPlans(refreshed,analysis,catalog),refreshed,'更新後の再描画・書き出しで再提案を繰り返さない');
 });
 
 test('親2人と祖父母4人を重複なしで配置し、継承進化は直接親に置く',()=>{

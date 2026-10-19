@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {analyze,normalizeState,acquisitionRoutes,eventChoicesForPurpose,normalizeFarmingProfile,exportChecklist} from '../dist/engine.js';
-import {suggestFactorPlan,analyzeFactorPlan,factorPlanKey,candidateSources,completeFactorChoices} from '../dist/factor-planner.js';
+import {suggestFactorPlan,analyzeFactorPlan,factorPlanKey,candidateSources,completeFactorChoices,refreshFarmingPolicy} from '../dist/factor-planner.js';
+import {FARMING_POLICY} from '../dist/farming-policy.js';
 const catalog=JSON.parse(fs.readFileSync(new URL('../dist/data/catalog.json',import.meta.url)));
 const main=patch=>normalizeState({characterId:107601,style:'差し',supports:[30317,30304,30306,30302,30283,30305],...patch},catalog);
 const find=(analysis,name)=>analysis.rows.find(r=>r.name===name);
@@ -18,12 +19,21 @@ test('旧保存データの本育成にあるファイン白択を補正する',
  assert.equal(state.eventChoices[e.id],undefined);
  assert.equal(find(analyze(state,catalog),'レースの真髄・体').status,'factor');
 });
-test('真髄体の周回編成にファインを提案し、白択を指定する',()=>{
+test('真髄体は高のまま継承前提とし、体を選択してもパワーファインを固定しない',()=>{
  const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体');
  const p=suggestFactorPlan(state,a,focus,catalog);
- assert.ok(p.supports.includes(30283));
+ assert.ok(!p.supports.includes(30283));assert.equal(p.anchorSupportId,null);assert.equal(p.scenario,'support');
  const result=analyzeFactorPlan(p,a,focus);
- assert.ok(result.covered.some(r=>r.name===focus.name));
+ assert.ok(!result.targets.some(r=>r.name===focus.name));assert.ok(!result.missing.some(r=>r.name===focus.name));
+ assert.equal(result.inheritedTargets.find(r=>r.name===focus.name).priority,1);
+ assert.equal(find(analyze(state,catalog),focus.name).status,'factor');assert.equal(focus.priority,1);
+ assert.equal(result.routes.has(focus.skillId),false,'継承を確認済みの経路として捏造しない');
+});
+test('継承元に体がない場合は手動指定でパワーファインと白択も使える',()=>{
+ const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体');
+ const p=suggestFactorPlan(state,a,focus,catalog,{anchorSupportId:30283});
+ assert.ok(p.supports.includes(30283));
+ assert.ok(analyzeFactorPlan(p,a,focus).inheritedTargets.find(r=>r.name===focus.name).canAcquire);
  const e=catalog.supports.find(s=>s.id===30283).events.find(e=>e.selection==='single');
  assert.ok(e.choices.find(c=>c.id===p.eventChoices[e.id]).skills.includes(210101));
  assert.equal(find(analyze(state,catalog),focus.name).status,'factor');
@@ -54,10 +64,11 @@ test('自動編成は6枠以内・同キャラ重複なしで、表示する経�
  }
 });
 test('白択と金択の同時計上を防ぎ、択変更で真髄体の取得経路が消える',()=>{
- const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体'),p=suggestFactorPlan(state,a,focus,catalog);
+ const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体'),p=suggestFactorPlan(state,a,focus,catalog,{anchorSupportId:30283});
+ assert.ok(analyzeFactorPlan(p,a,focus).inheritedTargets.find(r=>r.name===focus.name).canAcquire);
  const e=catalog.supports.find(s=>s.id===30283).events.find(e=>e.selection==='single');
  p.eventChoices[e.id]=e.choices.find(c=>!c.skills.includes(210101)).id;
- assert.ok(!analyzeFactorPlan(p,a,focus).covered.some(r=>r.name===focus.name));
+ assert.equal(analyzeFactorPlan(p,a,focus).inheritedTargets.find(r=>r.name===focus.name).canAcquire,false);
 });
 test('URAで真髄を狙う方法はその周回だけに計上する',()=>{
  const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・力');
@@ -74,18 +85,39 @@ test('周回キャラ本人のサポートは候補から除外する',()=>{
  assert.deepEqual(p.supports,[null,null,null,null,null,30305]);assert.deepEqual(p.learned,[]);
 });
 test('周回の択を未指定へ戻したら自動で白択へ戻さない',()=>{
- const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体'),p=suggestFactorPlan(state,a,focus,catalog);
+ const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体'),p=suggestFactorPlan(state,a,focus,catalog,{anchorSupportId:30283});
  const e=catalog.supports.find(s=>s.id===30283).events.find(e=>e.selection==='single');p.eventChoices[e.id]='';
  const changed=completeFactorChoices(p,a,focus,catalog);
  assert.equal(changed.eventChoices[e.id],'');
- assert.ok(!analyzeFactorPlan(changed,a,focus).covered.some(r=>r.name===focus.name));
+ assert.equal(analyzeFactorPlan(changed,a,focus).inheritedTargets.find(r=>r.name===focus.name).canAcquire,false);
 });
-test('TXTでは本育成の不足と周回編成・白択を別に出す',()=>{
+test('TXTでは本育成の体の不足と因子周回の継承前提を区別する',()=>{
  const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体'),p=suggestFactorPlan(state,a,focus,catalog);
  state.farmingPlans={[factorPlanKey(state,focus.name)]:p};
  const text=exportChecklist(state,a),[requirements,farming]=text.split('因子周回プラン（本育成とは別編成）');
  assert.ok(requirements.split('親からの継承候補')[0].includes('レースの真髄・体'));
- assert.match(farming,/対象因子：レースの真髄・体/);assert.match(farming,/因子周回の択：② 気持ちを乗せて/);
+ assert.match(farming,/対象因子：レースの真髄・体/);assert.match(farming,/既存因子から継承する前提/);assert.ok(!farming.includes('因子周回の択：② 気持ちを乗せて'));
+});
+
+test('旧保存の体だけを担うファインを更新し、赤因子・周回キャラ・チェックを保持する',()=>{
+ const state=main({}),full=analyze(state,catalog),focus=find(full,'レースの真髄・体'),a={...full,rows:[focus]};
+ const legacy={...suggestFactorPlan(state,a,focus,catalog,{anchorSupportId:30283}),farmingPolicy:'',redFactor:{type:'差し',stars:2},learned:[focus.name]};
+ const before=structuredClone(legacy),updated=refreshFarmingPolicy(legacy,a,catalog,focus);
+ assert.deepEqual(legacy,before);assert.ok(!updated.supports.includes(30283));assert.equal(updated.anchorSupportId,null);
+ assert.deepEqual(updated.redFactor,legacy.redFactor);assert.equal(updated.characterId,legacy.characterId);assert.deepEqual(updated.learned,legacy.learned);
+ assert.equal(updated.supports[5],30305);assert.equal(updated.farmingPolicy,FARMING_POLICY);
+ const explicit=suggestFactorPlan(state,a,focus,catalog,{anchorSupportId:30283});
+ assert.equal(refreshFarmingPolicy(explicit,a,catalog,focus),explicit,'新方針で手動指定したカードは維持する');
+});
+
+test('ファインに体以外の不足スキルの役割があれば旧保存でも残す',()=>{
+ const state=main({}),full=analyze(state,catalog),body=find(full,'レースの真髄・体'),white=full.index.normalByName.get('気持ちを乗せて');
+ const other={...body,name:white.name,skillId:white.id},a={...full,rows:[body,other]};
+ const candidates={...catalog,supports:catalog.supports.filter(s=>[30283,30305].includes(s.id))};
+ const p=suggestFactorPlan(state,a,other,candidates,{characterId:113501});
+ assert.ok(p.supports.includes(30283),'他の不足スキルでは自動提案の対象に残る');
+ const updated=refreshFarmingPolicy({...p,farmingPolicy:''},a,catalog,other);
+ assert.ok(updated.supports.includes(30283));assert.ok(analyzeFactorPlan(updated,a,other).covered.some(r=>r.name===other.name));
 });
 test('834件の画像がそれぞれのIDのローカルPNGに対応する',()=>{
  for(const [kind,items]of [['characters',catalog.characters],['supports',catalog.supports]])for(const item of items){

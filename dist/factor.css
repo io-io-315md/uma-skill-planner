@@ -1,3 +1,4 @@
+.inherited-factor-note{margin:16px 0;padding:13px 15px;border:1px solid #cbdedb;border-left:3px solid #477c73;border-radius:7px;background:#f2f8f6}.inherited-factor-note h4{font-size:13px;margin:0 0 7px}.inherited-factor-note p{font-size:11px;line-height:1.8;margin:7px 0;color:#4c665e}.inherited-factor-row{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:12px}.inherited-factor-row .prepare-checkbox{margin:0;font-size:11px}.individual-inherited{font-size:10px;line-height:1.8;margin:9px 0;color:#426b61;overflow-wrap:anywhere}
 .artwork { display: inline-flex; flex: none; overflow: hidden; border-radius: 7px; background: #edf0e8; vertical-align: middle; }
 .artwork img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .character-art { width: 56px; height: 56px; border-radius: 0; background: transparent; overflow: visible; }

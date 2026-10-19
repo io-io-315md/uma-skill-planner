@@ -3,7 +3,7 @@ import { DEFAULT_STATE, normalizeState, analyze, TYPE_LABELS, PRIORITIES, export
 import { needsFactor } from './factor-planner.js';
 import { createFactorUI } from './factor-ui.js';
 import { createLineageUI } from './lineage-ui.js';
-import { exportLineagePlan, lineagePlanKey } from './lineage-planner.js';
+import { exportLineagePlan, lineagePlanKey, refreshSavedFarmingPlans } from './lineage-planner.js';
 import { artwork } from './ui.js';
 import { createTierUI } from './tier-ui.js';
 import { selectSupportCandidates } from './support-picker.js';
@@ -27,6 +27,8 @@ function checklistText(){const plan=state.lineagePlans[lineagePlanKey(state)];re
 
 function render() {
   analysis = analyze(state, catalog);
+  const refreshed=refreshSavedFarmingPlans(state,analysis,catalog);
+  if(refreshed!==state){state=refreshed;persist();}
   renderCourses(); renderSetup(); renderResults(); renderSaved(); factorUI?.render(); tierUI?.render();
 }
 function renderCourses() {

@@ -1,5 +1,6 @@
 import { acquisitionRoutes, normalizeFarmingProfile, normalizeLineagePlan } from './engine.js';
-import { farmingTargets, supportOptions, URA_METHODS } from './factor-planner.js';
+import { farmingTargets, inheritedFarmingTargets, supportOptions, URA_METHODS, refreshFarmingPolicy } from './factor-planner.js';
+import { FARMING_POLICY, INHERITED_FACTOR_NOTE } from './farming-policy.js';
 import { FIXED_SUPPORT_ID } from './deck-rules.js';
 import { suggestRedFactors, analyzeRedPlan } from './factor-targets.js';
 
@@ -13,7 +14,22 @@ export const LINEAGE_NODES=[
 ];
 export const branchIndices=side=>[side,2+side*2,3+side*2];
 export const lineagePlanKey=state=>`${state.courseId}:${state.style}:${state.characterId??0}`;
-export const lineageSignature=(state,analysis)=>JSON.stringify(['tazuna-red-v2',state.supports,Object.entries(state.eventChoices).sort(),state.supplied.slice().sort(),state.excluded.slice().sort(),analysis.rows.map(r=>[r.name,r.priority,r.status,r.excluded])]);
+export const lineageSignature=(state,analysis)=>JSON.stringify([FARMING_POLICY,state.supports,Object.entries(state.eventChoices).sort(),state.supplied.slice().sort(),state.excluded.slice().sort(),analysis.rows.map(r=>[r.name,r.priority,r.status,r.excluded])]);
+export function refreshLineagePolicy(plan,analysis,catalog){
+  return {...plan,nodes:plan.nodes.map(node=>refreshFarmingPolicy(node,analysis,catalog))};
+}
+export function refreshSavedFarmingPlans(state,analysis,catalog){
+  const key=lineagePlanKey(state),prefix=`${key}:`,updates={};
+  for(const [savedKey,profile]of Object.entries(state.farmingPlans)){
+    if(!savedKey.startsWith(prefix)||profile.farmingPolicy===FARMING_POLICY)continue;
+    const focus=analysis.rows.find(row=>row.name===savedKey.slice(prefix.length));
+    if(focus)updates[savedKey]=refreshFarmingPolicy(profile,analysis,catalog,focus);
+  }
+  const old=state.lineagePlans[key];let plan=old;
+  if(old?.nodes.some(node=>node.farmingPolicy!==FARMING_POLICY))plan=old.manual?refreshLineagePolicy(old,analysis,catalog):suggestLineagePlan(state,analysis,catalog,{previous:old});
+  if(!Object.keys(updates).length&&plan===old)return state;
+  return {...state,farmingPlans:{...state.farmingPlans,...updates},lineagePlans:plan===old?state.lineagePlans:{...state.lineagePlans,[key]:plan}};
+}
 const inheritanceTargets=analysis=>analysis.rows.filter(r=>r.status==='inheritance'&&!r.excluded);
 const compare=(a,b)=>{for(let i=0;i<a.length;i++){const diff=a[i]-b[i];if(diff)return diff;}return 0;};
 const known=route=>route.kind!=='event-unverified';
@@ -33,7 +49,8 @@ export function analyzeCoverageProfile(profile,analysis) {
     const all=routes.get(row.skillId)??[];
     return {...row,farmingRoutes:all.filter(known),uncertainRoutes:all.filter(r=>!known(r)),canAcquire:all.some(known),learned:profile.learned.includes(row.name)};
   });
-  return {targets,covered:targets.filter(r=>r.canAcquire),missing:targets.filter(r=>!r.canAcquire),routes};
+  const inheritedTargets=inheritedFarmingTargets(analysis).map(row=>({...row,farmingRoutes:(routes.get(row.skillId)??[]).filter(known),learned:profile.learned.includes(row.name)}));
+  return {targets,inheritedTargets,covered:targets.filter(r=>r.canAcquire),missing:targets.filter(r=>!r.canAcquire),routes};
 }
 
 // Lexicographic counts: a high-priority skill always precedes any number of
@@ -88,7 +105,7 @@ export function suggestCoverageDeck(characterId,analysis,catalog,{alreadyCovered
   const seeds=[null,...targets.filter(r=>r.priority===1&&!native.has(r.skillId)).map(r=>bestOf(options.filter(o=>o.ids.includes(r.skillId)),[]))].filter((s,i,a)=>i===0||s&&!a.slice(1,i).some(o=>o?.support.id===s.support.id&&JSON.stringify(o.eventChoices)===JSON.stringify(s.eventChoices)));
   let chosen=[];
   for(const seed of seeds){const candidate=search(seed);if(compare(score(candidate),score(chosen))>0)chosen=candidate;}
-  return normalizeFarmingProfile({characterId,supports:[...Array.from({length:limit},(_,i)=>chosen[i]?.support.id??null),...(fixed?[fixed.id]:[])],eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),scenario},catalog);
+  return normalizeFarmingProfile({characterId,supports:[...Array.from({length:limit},(_,i)=>chosen[i]?.support.id??null),...(fixed?[fixed.id]:[])],eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),scenario,farmingPolicy:FARMING_POLICY},catalog);
 }
 
 export function completeCoverageChoices(profile,analysis,catalog) {
@@ -190,11 +207,13 @@ export function analyzeLineagePlan(plan,analysis) {
   const friendNodes=branchIndices(plan.friendSide),ownNodes=branchIndices(1-plan.friendSide);
   const friendTargets=targets.filter(r=>friendNodes.some(i=>assignments[i].some(t=>t.skillId===r.skillId)));
   const friendOnly=targets.filter(r=>friendNodes.some(i=>results[i].covered.some(t=>t.skillId===r.skillId))&&!ownNodes.some(i=>results[i].covered.some(t=>t.skillId===r.skillId)));
-  return {results,targets,covered,missing,assignments,inheritance,friendTargets,friendOnly,friendNodes,ownNodes};
+  return {results,targets,inheritedTargets:inheritedFarmingTargets(analysis),covered,missing,assignments,inheritance,friendTargets,friendOnly,friendNodes,ownNodes};
 }
 
 export function exportLineagePlan(plan,analysis,state={}) {
+  plan=refreshLineagePolicy(plan,analysis,{characters:[...analysis.index.characters.values()],supports:[...analysis.index.supports.values()]});
   const result=analyzeLineagePlan(plan,analysis),lines=['親・祖父母の因子設計'];
+  if(result.inheritedTargets.length)lines.push(INHERITED_FACTOR_NOTE,'体は周回編成のカバー件数に含めず、各個体の継承ヒントから習得して白因子を狙う。');
   const red=analyzeRedPlan(state,analysis,plan);
   for(let i=0;i<6;i++){
     const node=plan.nodes[i],meta=LINEAGE_NODES[i],character=analysis.index.characters.get(node.characterId);
@@ -203,11 +222,13 @@ export function exportLineagePlan(plan,analysis,state={}) {
     const unique=result.inheritance.find(r=>r.node===i);
     if(unique)lines.push(`固有：${unique.name}${unique.evolvedInheritance?(i<2?'（直接親・対象衣装の本人所持が必要）':'（祖父母では継承進化不可）'):i<2?'（直接親）':'（育成中の継承抽選）'}`);
     lines.push(`用意する白因子：${result.assignments[i].map(r=>`[${['','高','中','低'][r.priority]}] ${r.name}`).join(' / ')||'取得ルート・手持ちに応じて追加'}`);
+    if(result.inheritedTargets.length)lines.push(`既存因子から引き継ぐ白因子：${result.inheritedTargets.map(r=>`[${['','高','中','低'][r.priority]}] ${r.name}`).join(' / ')}（継承ヒント・白因子化を確認）`);
     lines.push(`指定する赤因子：${red.targets[i].type}（目標★${red.targets[i].stars}・星数は抽選）`,red.targets[i].preparation);
     lines.push(`因子厳選サポカ：${node.supports.map((id,slot)=>(analysis.index.supports.get(id)?.name??'自由枠')+(slot===5?' [自前・固定]':'')).join(' / ')}`);
     for(const id of node.supports){const support=analysis.index.supports.get(id);for(const event of support?.events??[]){const choice=event.choices.find(c=>c.id===node.eventChoices[event.id]);if(choice)lines.push(`  ${support.characterName}の択：${choice.label}`);}}
     if(node.scenario==='ura')lines.push('URAの真髄対決イベントも使用');
   }
+  if(result.inheritedTargets.length)lines.push(`フレンド因子にも含める前提：${result.inheritedTargets.map(r=>r.name).join(' / ')}（代表・祖父母の白因子を確認）`);
   lines.push(`フレンド側で補う白因子：${result.friendOnly.map(r=>r.name).join(' / ')||'自前側と重ねて確保'}`,`6人の編成でも取得元が足りない白因子：${result.missing.map(r=>r.name).join(' / ')||'なし'}`,'相性・共通勝利レース・所持/凸数は未評価。白因子化・継承は抽選。');
   return lines.join('\n');
 }
