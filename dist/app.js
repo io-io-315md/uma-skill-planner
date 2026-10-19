@@ -3,12 +3,13 @@ import { DEFAULT_STATE, normalizeState, analyze, TYPE_LABELS, PRIORITIES, export
 import { needsFactor } from './factor-planner.js';
 import { createFactorUI } from './factor-ui.js';
 import { artwork } from './ui.js';
+import { createTierUI } from './tier-ui.js';
 
 const $ = id => document.getElementById(id);
 const escape = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const STORE = 'umaplan.v1';
 const statusLabels = { factor:'白因子で補う候補', inheritance:'親から継承', available:'編成から取得候補', manual:'別ルートで取得', 'own-unique':'本体固有・継承不要', 'event-check':'イベント条件を確認', incompatible:'同キャラの継承不可' };
-let catalog, state, analysis, factorUI;
+let catalog, state, analysis, factorUI, tierUI;
 let view = 'factor', category = 'すべて', priorityFilter = 'all', query = '', showExcluded = false;
 let picker = { kind:'character', slot:0, type:'すべて', context:'main' };
 let toastTimer;
@@ -20,7 +21,7 @@ function toggle(array, value) { return array.includes(value) ? array.filter(v =>
 
 function render() {
   analysis = analyze(state, catalog);
-  renderCourses(); renderSetup(); renderResults(); renderSaved(); factorUI?.render();
+  renderCourses(); renderSetup(); renderResults(); renderSaved(); factorUI?.render(); tierUI?.render();
 }
 function renderCourses() {
   const c = analysis.course;
@@ -189,7 +190,14 @@ async function boot() {
     const response=await fetch(new URL('./data/catalog.json',import.meta.url));if(!response.ok)throw new Error(`HTTP ${response.status}`);
     catalog=await response.json();
     let saved;try{saved=JSON.parse(localStorage.getItem(STORE)??'null');}catch{saved=null;}
-    state=normalizeState(saved,catalog);factorUI=createFactorUI({catalog,getState:()=>state,update,openPicker});render();
+    state=normalizeState(saved,catalog);
+    factorUI=createFactorUI({catalog,getState:()=>state,update,openPicker});
+    tierUI=createTierUI({catalog,getCourse:()=>analysis.course,getCharacterId:()=>state.characterId,onSelect:(characterId,style)=>{
+      const old=state.supports.filter(Boolean).length;
+      update({characterId,style});
+      toast(state.supports.filter(Boolean).length<old?'本育成に選択しました。本人のサポートは編成から外しました。':'本育成のウマ娘と作戦を選択しました。');
+    }});
+    $('tier-button').disabled=false;render();
     if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
   } catch(error) { $('skill-list').innerHTML='<div class="empty-state"><h3>データを読み込めませんでした</h3><p>接続を確認してページを再読み込みしてください。ローカルで使う場合は、npm startで起動します。</p></div>';console.error(error); }
 }

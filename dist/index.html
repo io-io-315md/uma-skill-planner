@@ -8,10 +8,11 @@
   <title>UMAPLAN｜コース別スキル・因子プランナー</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./style.css?v=1.2.1">
-  <link rel="stylesheet" href="./layout.css?v=1.2.1">
-  <link rel="stylesheet" href="./factor.css?v=1.2.1">
-  <script type="module" src="./app.js?v=1.2.1"></script>
+  <link rel="stylesheet" href="./style.css?v=1.3.0">
+  <link rel="stylesheet" href="./layout.css?v=1.3.0">
+  <link rel="stylesheet" href="./factor.css?v=1.3.0">
+  <link rel="stylesheet" href="./tier.css?v=1.3.0">
+  <script type="module" src="./app.js?v=1.3.0"></script>
 </head>
 <body>
   <a class="skip-link" href="#results">取得候補へ移動</a>
@@ -25,6 +26,7 @@
     <section id="course-banner" class="course-banner" aria-label="選択中のレース条件"></section>
     <div class="planner-layout">
       <aside class="setup-column" aria-label="育成条件と編成">
+        <button id="tier-button" class="tier-button" aria-haspopup="dialog" aria-controls="tier-dialog" disabled><span>有力ウマTier</span><span aria-hidden="true">↗</span></button>
         <section class="panel setup-panel"><div class="panel-heading"><span class="step">01</span><h2>本育成</h2><button class="small-button" id="sample-button">操作例を入力</button></div>
           <label class="field-label" for="character-picker">育成ウマ娘 <span>衣装ごとに選択</span></label><button class="picker-button" id="character-picker"><span id="character-label">ウマ娘を選択</span><span aria-hidden="true">⌄</span></button><div id="character-note" class="field-note">キャラを選ぶと、自前の取得スキルを照合します。</div>
           <p class="field-label">作戦</p><div class="style-buttons" id="style-buttons" aria-label="作戦"></div>
@@ -52,6 +54,7 @@
   <dialog id="picker-dialog" class="picker-dialog"><div class="dialog-heading"><div><p class="eyebrow" id="picker-eyebrow">SELECT</p><h2 id="picker-title">ウマ娘を選択</h2></div><button class="close-button" id="close-picker" aria-label="選択を閉じる">×</button></div><label class="search-field dialog-search"><span aria-hidden="true">⌕</span><input type="search" id="picker-search" placeholder="名前・衣装で検索" aria-label="キャラ・サポートカード検索"></label><div id="picker-filters" class="picker-filters"></div><div id="picker-results" class="picker-results"></div></dialog>
   <dialog id="info-dialog" class="info-dialog"><div class="dialog-heading"><h2 id="info-title"></h2><button class="close-button" id="close-info" aria-label="説明を閉じる">×</button></div><div id="info-content"></div></dialog>
   <dialog id="factor-dialog" class="factor-dialog"><div class="dialog-heading"><h2 id="factor-title">因子周回</h2><button class="close-button" id="close-factor" aria-label="因子周回を閉じる">×</button></div><div id="factor-content"></div></dialog>
+  <dialog id="tier-dialog" class="tier-dialog" aria-labelledby="tier-title" aria-describedby="tier-course"><div class="dialog-heading"><div><p id="tier-course" class="tier-course"></p><h2 id="tier-title">有力ウマTier</h2></div><button class="close-button" id="close-tier" aria-label="Tier表を閉じる">×</button></div><div id="tier-content" class="tier-content"></div></dialog>
   <div id="toast" role="status" class="toast" hidden></div>
   <noscript><p>このアプリを使うにはJavaScriptを有効にしてください。</p></noscript>
 </body>
