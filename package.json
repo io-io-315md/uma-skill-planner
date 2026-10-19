@@ -1,13 +1,13 @@
 {
   "name": "uma-skill-planner",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "description": "ウマ娘のコース別スキル・継承・白因子プランナー",
   "scripts": {
     "start": "node tools/serve.mjs",
     "test": "node --test",
-    "check": "node --check dist/app.js && node --check dist/engine.js && node --check dist/recommendations.js && node --check dist/priorities.js && node --check dist/factor-planner.js && node --check dist/factor-ui.js && node --check dist/ui.js && node --check dist/character-tiers.js && node --check dist/tier-ui.js && node --check dist/support-picker.js && node --check dist/support-usage.js && node --check dist/deck-rules.js && node tools/validate-data.mjs",
+    "check": "node --check dist/app.js && node --check dist/engine.js && node --check dist/recommendations.js && node --check dist/priorities.js && node --check dist/factor-planner.js && node --check dist/factor-ui.js && node --check dist/lineage-planner.js && node --check dist/lineage-ui.js && node --check dist/ui.js && node --check dist/character-tiers.js && node --check dist/tier-ui.js && node --check dist/support-picker.js && node --check dist/support-usage.js && node --check dist/deck-rules.js && node tools/validate-data.mjs",
     "data:build": "node tools/build-data.mjs",
     "data:update": "node tools/update-data.mjs"
   },

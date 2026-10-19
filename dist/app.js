@@ -2,6 +2,8 @@ import { COURSES, STYLES, CATEGORIES, SOURCES, VERIFIED_AT } from './recommendat
 import { DEFAULT_STATE, normalizeState, analyze, TYPE_LABELS, PRIORITIES, exportChecklist, eventChoicesForPurpose, resolvedEventChoice } from './engine.js';
 import { needsFactor } from './factor-planner.js';
 import { createFactorUI } from './factor-ui.js';
+import { createLineageUI } from './lineage-ui.js';
+import { exportLineagePlan, lineagePlanKey } from './lineage-planner.js';
 import { artwork } from './ui.js';
 import { createTierUI } from './tier-ui.js';
 import { selectSupportCandidates } from './support-picker.js';
@@ -12,7 +14,7 @@ const $ = id => document.getElementById(id);
 const escape = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const STORE = 'umaplan.v1';
 const statusLabels = { factor:'白因子で補う候補', inheritance:'親から継承', available:'編成から取得候補', manual:'別ルートで取得', 'own-unique':'本体固有・継承不要', 'event-check':'イベント条件を確認', incompatible:'同キャラの継承不可' };
-let catalog, state, analysis, factorUI, tierUI, supportUsage;
+let catalog, state, analysis, factorUI, lineageUI, tierUI, supportUsage;
 let view = 'factor', category = 'すべて', priorityFilter = 'all', query = '', showExcluded = false;
 let picker = { kind:'character', slot:0, type:'すべて', context:'main' };
 let toastTimer;
@@ -21,6 +23,7 @@ function toast(message) { $('toast').textContent = message; $('toast').hidden = 
 function persist() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { toast('保存できませんでした。JSON書き出しでプランを保管してください。'); } }
 function update(patch = {}) { state = normalizeState({ ...state, ...patch }, catalog); persist(); render(); }
 function toggle(array, value) { return array.includes(value) ? array.filter(v => v !== value) : [...array, value]; }
+function checklistText(){const plan=state.lineagePlans[lineagePlanKey(state)];return exportChecklist(state,analysis)+(plan?'\n\n'+exportLineagePlan(plan,analysis):'');}
 
 function render() {
   analysis = analyze(state, catalog);
@@ -55,7 +58,7 @@ function renderSetup() {
 function renderResults() {
   const {counts,course}=analysis;
   const uncertain=analysis.rows.filter(r=>!r.excluded&&r.status==='event-check').length;
-  $('results-title').textContent=view==='factor'?'必要な継承・白因子':'本育成の取得スキル';
+  $('results-title').textContent=view==='factor'?'必要な継承・白因子':view==='lineage'?'因子厳選用サポカ編成':'本育成の取得スキル';
   $('stats').innerHTML=[['白因子が必要',counts.factor],['継承固有の候補',counts.inheritance],['本育成で取得候補',counts.available-uncertain],['イベント条件要確認',uncertain]].map(([label,n])=>`<div class="stat"><span class="stat-label">${label}</span><strong class="stat-number">${n}<small>件</small></strong></div>`).join('');
   const blanks=state.supports.filter(s=>!s).length;
   $('results-notice').innerHTML=`<span class="notice-dot">•</span><span>${!course.confirmed?'コース未確定のため、不足判定は表示しません。':!state.characterId?'本育成のウマ娘を選択してください。':blanks?`本育成のサポート ${6-blanks}/6枠。空き枠があるため不足一覧は仮の結果です。`:'本育成は金スキル側のイベント択で照合。白スキルを優先する択は因子周回で別に扱います。'}</span>`;
@@ -67,6 +70,10 @@ function renderResults() {
     return `<button class="course-factor-count ${c.id===course.id?'active':''}" data-course="${c.id}"><strong>${c.month}月 ${c.venue} ${c.distance}m</strong><span>白因子 ${a.counts.factor} / 継承固有の候補 ${a.counts.inheritance}</span></button>`;
   }).join('');
   $('factor-view-note').hidden=view!=='factor';
+  $('skill-results-body').hidden=view==='lineage';
+  $('skill-results-body').setAttribute('aria-labelledby',view==='all'?'all-tab':'factor-tab');
+  $('lineage-overview').hidden=view!=='lineage';
+  if(view==='lineage'){lineageUI?.render();return;}
   $('category-filters').innerHTML=['すべて',...CATEGORIES].map(c=>`<button class="category-button ${category===c?'active':''}" data-category="${c}" aria-pressed="${category===c}">${c}</button>`).join('');
   const scopedRows=analysis.rows.filter(r=>(showExcluded||!r.excluded)&&(category==='すべて'||r.category===category)&&(!query||`${r.name} ${r.gold??''} ${r.ownerName??''} ${r.reason} ${r.priorityReason}`.toLowerCase().includes(query.toLowerCase()))&&(view==='all'||needsFactor({...r,excluded:false})||r.status==='event-check'));
   $('priority-filters').innerHTML=['all',1,2,3].map(level=>`<button class="priority-filter ${String(priorityFilter)===String(level)?'active':''}" data-priority="${level}" aria-pressed="${String(priorityFilter)===String(level)}">${level==='all'?'全優先度':`<span class="priority-code priority-code-${level}">${PRIORITIES[level]}</span>`}<span class="priority-count">${level==='all'?scopedRows.length:scopedRows.filter(r=>r.priority===level).length}</span></button>`).join('');
@@ -117,7 +124,7 @@ function renderSaved() {
 function openPicker(kind,slot=0,context='main') {
   if(kind==='support'&&context==='main'&&slot===FIXED_SUPPORT_SLOT)return;
   picker = {kind,slot,type:'すべて',context,distance:context==='main'?(analysis.course.distanceType??'すべて'):'すべて',style:context==='main'?state.style:'すべて',dirtOnly:context==='main'&&analysis.course.surface==='ダート',allUsage:context!=='main'};
-  $('picker-title').textContent = `${context==='farming'?'因子周回':'本育成'}：${kind === 'character' ? 'ウマ娘を選択' : `サポート ${slot+1} を選択`}`;
+  $('picker-title').textContent = `${context==='main'?'本育成':'因子周回'}：${kind === 'character' ? 'ウマ娘を選択' : `サポート ${slot+1} を選択`}`;
   $('picker-eyebrow').textContent = kind === 'character' ? 'SELECT TRAINEE' : 'BUILD YOUR DECK';
   $('picker-search').value = '';
   renderPicker(); $('picker-dialog').showModal(); $('picker-search').focus();
@@ -125,18 +132,19 @@ function openPicker(kind,slot=0,context='main') {
 function renderPicker() {
   const kind = picker.kind;
   const text = $('picker-search').value.toLowerCase().replace(/[\s\[\]「」]/g,'');
-  const profile=picker.context==='farming'?factorUI.profile():state;
+  const profile=picker.context==='lineage'?lineageUI.profile():picker.context==='farming'?factorUI.profile():state;
   const char = analysis.index.characters.get(profile.characterId);
   const mainChar=analysis.index.characters.get(state.characterId);
   const selectedChars = new Set(profile.supports.filter((_,i) => i !== picker.slot).map(id => analysis.index.supports.get(id)?.characterId));
+  const lineageExcluded=picker.context==='lineage'?lineageUI.excludedCharacters():new Set();
   const candidates = kind==='support'
-    ? selectSupportCandidates(catalog.supports,{context:picker.context,traineeCharacterId:char?.characterId,excludedCharacterIds:selectedChars,type:picker.type,query:text,usageIndex:supportUsage,
+    ? selectSupportCandidates(catalog.supports,{context:picker.context==='main'?'main':'farming',traineeCharacterId:char?.characterId,excludedCharacterIds:selectedChars,type:picker.type,query:text,usageIndex:supportUsage,
       usageFilter:picker.allUsage?null:{distance:picker.distance,style:picker.style,dirtOnly:picker.dirtOnly,surface:picker.dirtOnly?'ダート':analysis.course.surface}})
-    : catalog.characters.filter(c=>(picker.context!=='farming'||c.characterId!==mainChar?.characterId)&&c.name.toLowerCase().replace(/[\s\[\]「」]/g,'').includes(text)).sort((a,b)=>a.characterId-b.characterId||a.id-b.id);
+    : catalog.characters.filter(c=>(picker.context==='main'||c.characterId!==mainChar?.characterId)&&!lineageExcluded.has(c.characterId)&&c.name.toLowerCase().replace(/[\s\[\]「」]/g,'').includes(text)).sort((a,b)=>a.characterId-b.characterId||a.id-b.id);
   $('picker-results').classList.toggle('character-picker-grid',kind==='character');
   renderUsageFilters(kind==='support'&&picker.context==='main');
   $('picker-filters').innerHTML = kind === 'support' ? ['すべて','speed','stamina','power','guts','wit','friend','group'].map(type => `<button class="category-button ${picker.type === type ? 'active' : ''}" data-picker-type="${type}">${TYPE_LABELS[type] ?? type}</button>`).join('') : '';
-  $('picker-results').innerHTML = `<p class="picker-summary">${candidates.length}件${kind === 'support' ? ` / ${picker.context==='farming'?'SSR・SR・R':'SSRのみ'} / 実装日の新しい順` : ''}</p>` + candidates.map(c =>kind==='support'?renderSupportCandidate(c):`<button class="picker-result character-picker-result" data-pick="${c.id}">${artwork(c)}<span class="picker-result-name"><small>${escape(c.title)}</small><strong>${escape(c.characterName)}</strong></span></button>`).join('');
+  $('picker-results').innerHTML = `<p class="picker-summary">${candidates.length}件${kind === 'support' ? ` / ${picker.context==='main'?'SSRのみ':'SSR・SR・R'} / 実装日の新しい順` : ''}</p>` + candidates.map(c =>kind==='support'?renderSupportCandidate(c):`<button class="picker-result character-picker-result" data-pick="${c.id}">${artwork(c)}<span class="picker-result-name"><small>${escape(c.title)}</small><strong>${escape(c.characterName)}</strong></span></button>`).join('');
   if(!candidates.length)$('picker-results').innerHTML+='<p class="picker-empty">該当するカードはありません。種類・用途・検索条件を変更してください。</p>';
 }
 
@@ -179,7 +187,8 @@ document.addEventListener('click', event => {
   else if (d.usageDirt!==undefined) { picker.allUsage=false;picker.dirtOnly=!picker.dirtOnly;renderPicker(); }
   else if (d.pick) {
     const id=Number(d.pick);
-    if(picker.context==='farming'){if(picker.kind==='character')factorUI.chooseCharacter(id);else factorUI.chooseSupport(id,picker.slot);}
+    if(picker.context==='lineage'){if(picker.kind==='character')lineageUI.chooseCharacter(id);else lineageUI.chooseSupport(id,picker.slot);}
+    else if(picker.context==='farming'){if(picker.kind==='character')factorUI.chooseCharacter(id);else factorUI.chooseSupport(id,picker.slot);}
     else if (picker.kind === 'character') { const old=state.supports.filter(Boolean).length;update({characterId:id});if(state.supports.filter(Boolean).length<old)toast('育成キャラ本人のサポートを編成から外しました。'); }
     else { const supports=[...state.supports];supports[picker.slot]=id;update({supports}); }
     $('picker-dialog').close();
@@ -203,8 +212,8 @@ $('close-picker').addEventListener('click',()=>$('picker-dialog').close());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());
 for(const id of ['sources-button','footer-sources'])$(id).addEventListener('click',showSources);
 $('help-button').addEventListener('click',()=>openInfo('使い方', '<h3>1. コースと育成条件を選ぶ</h3><p>上の開催予定からコースを選び、育成する衣装・作戦を設定します。</p><h3>2. サポートを6枚選ぶ</h3><p>本育成で使う6枚を選択します。金スキルを優先し、金と引き換えになる白スキル択は本育成の取得経路に含めません。</p><h3>3. 継承・因子の準備を確認する</h3><p>「必要な継承・白因子」で、編成にない白スキルと継承元を確認します。因子名をタップすると、因子周回のキャラ・サポート編成・イベント択・優先スキルを別に設定できます。シナリオ等で取れるものは「別ルートで取得」、不要な加速などは「今回は見送る」に設定できます。</p><h3>4. 保存する</h3><p>準備できたものにチェックし、リストをコピー。複数プランの保存とJSONでの持ち運びもできます。スマートフォンはブラウザーの「ホーム画面に追加」からアプリとして使えます。</p>'));
-$('copy-checklist').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(exportChecklist(state,analysis));toast('チェックリストをコピーしました。');}catch{download('umaplan-checklist.txt',exportChecklist(state,analysis));toast('コピーできなかったため、テキストで保存しました。');}});
-$('download-checklist').addEventListener('click',()=>download('umaplan-checklist.txt',exportChecklist(state,analysis)));
+$('copy-checklist').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(checklistText());toast('チェックリストをコピーしました。');}catch{download('umaplan-checklist.txt',checklistText());toast('コピーできなかったため、テキストで保存しました。');}});
+$('download-checklist').addEventListener('click',()=>download('umaplan-checklist.txt',checklistText()));
 $('save-plan').addEventListener('click',()=>{const char=analysis.index.characters.get(state.characterId);const {plans,...snapshot}=state;const label=`${analysis.course.month}月 ${analysis.course.venue??'未定'} / ${char?.characterName??'キャラ未選択'} / ${state.style}`;update({plans:[{label,state:snapshot},...plans].slice(0,20)});toast('プランを保存しました（最大20件）。');});
 $('export-json').addEventListener('click',()=>download('umaplan-plans.json',JSON.stringify({app:'umaplan',version:2,state},null,2),'application/json'));
 $('import-json').addEventListener('click',()=>$('json-file').click());
@@ -222,6 +231,7 @@ async function boot() {
     let saved;try{saved=JSON.parse(localStorage.getItem(STORE)??'null');}catch{saved=null;}
     state=normalizeState(saved,catalog);
     factorUI=createFactorUI({catalog,getState:()=>state,update,openPicker});
+    lineageUI=createLineageUI({catalog,getState:()=>state,update,openPicker,openFactor:name=>factorUI.open(name)});
     tierUI=createTierUI({catalog,getCourse:()=>analysis.course,getCharacterId:()=>state.characterId,onSelect:(characterId,style)=>{
       const old=state.supports.filter(Boolean).length;
       update({characterId,style});

@@ -5,7 +5,7 @@ import { skillMatchesRace } from './support-usage.js';
 export { PRIORITIES } from './priorities.js';
 
 export const TYPE_LABELS = { speed: 'スピード', stamina: 'スタミナ', power: 'パワー', guts: '根性', wit: '賢さ', friend: '友人', group: 'グループ' };
-export const DEFAULT_STATE = { version: 2, courseId: COURSES[0].id, style: '先行', characterId: null, awakening: 5, supports: [null,null,null,null,null,FIXED_SUPPORT_ID], eventChoices: {}, supplied: [], prepared: [], excluded: [], farmingPlans: {}, plans: [] };
+export const DEFAULT_STATE = { version: 2, courseId: COURSES[0].id, style: '先行', characterId: null, awakening: 5, supports: [null,null,null,null,null,FIXED_SUPPORT_ID], eventChoices: {}, supplied: [], prepared: [], excluded: [], farmingPlans: {}, lineagePlans: {}, plans: [] };
 
 export function normalizeFarmingProfile(raw, catalog) {
   const profile=raw&&typeof raw==='object'?raw:{};
@@ -19,6 +19,19 @@ export function normalizeFarmingProfile(raw, catalog) {
     anchorSupportId:catalog.supports.some(s=>s.id===Number(profile.anchorSupportId))?Number(profile.anchorSupportId):null,
     scenario:profile.scenario==='ura'?'ura':'support'
   };
+}
+
+export function normalizeLineagePlan(raw,catalog,mainCharacterId=null) {
+  const plan=raw&&typeof raw==='object'?raw:{};
+  const seen=new Set([catalog.characters.find(c=>c.id===mainCharacterId)?.characterId]);
+  const nodes=Array.from({length:6},(_,i)=>{
+    const profile=normalizeFarmingProfile(plan.nodes?.[i],catalog);
+    const character=catalog.characters.find(c=>c.id===profile.characterId);
+    if(character&&seen.has(character.characterId))return normalizeFarmingProfile({...profile,characterId:null},catalog);
+    if(character)seen.add(character.characterId);
+    return profile;
+  });
+  return {nodes,friendSide:plan.friendSide===0?0:1,manual:plan.manual===true,signature:typeof plan.signature==='string'?plan.signature.slice(0,12000):''};
 }
 
 export function normalizeState(raw, catalog) {
@@ -38,6 +51,7 @@ export function normalizeState(raw, catalog) {
   state.plans = Array.isArray(state.plans) ? state.plans.filter(p => p && typeof p.label === 'string' && p.state && typeof p.state === 'object').slice(0,20) : [];
   state.version=2;
   state.farmingPlans=state.farmingPlans&&typeof state.farmingPlans==='object'&&!Array.isArray(state.farmingPlans)?Object.fromEntries(Object.entries(state.farmingPlans).filter(([key,value])=>key.length<250&&value&&typeof value==='object').slice(-120).map(([key,value])=>[key,normalizeFarmingProfile(value,catalog)])):{};
+  state.lineagePlans=state.lineagePlans&&typeof state.lineagePlans==='object'&&!Array.isArray(state.lineagePlans)?Object.fromEntries(Object.entries(state.lineagePlans).filter(([key,value])=>key.length<250&&value&&typeof value==='object').slice(-30).map(([key,value])=>[key,normalizeLineagePlan(value,catalog,Number(key.split(':').at(-1)))])):{};
   return state;
 }
 

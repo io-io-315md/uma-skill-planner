@@ -17,7 +17,7 @@ export function farmingTargets(analysis,focus) {
   return rows.sort((a,b)=>(a.name===focus?.name?-1:b.name===focus?.name?1:0)||a.priority-b.priority||a.name.localeCompare(b.name,'ja'));
 }
 
-function supportOptions(support,index) {
+export function supportOptions(support,index) {
   let options=[{skills:new Map(),eventChoices:{}}];
   const add=(map,id,kind)=>{for(const lower of lowerClosure(id,index)){if((RELIABILITY[kind]??0)>(RELIABILITY[map.get(lower)]??0))map.set(lower,kind);}};
   support.hintSkills.forEach(id=>add(options[0].skills,id,'hint'));
