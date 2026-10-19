@@ -1,4 +1,6 @@
 import { acquisitionRoutes, lowerClosure, normalizeFarmingProfile } from './engine.js';
+import { FIXED_SUPPORT_ID } from './deck-rules.js';
+import { defaultRedFactor } from './factor-targets.js';
 
 // These are ranking weights, not measured hint/event probabilities.
 const WEIGHT={1:12,2:4,3:1};
@@ -67,12 +69,13 @@ export function suggestFactorPlan(state,analysis,focus,catalog,options={}) {
   const preferred=analysis.index.characters.get(Number(options.characterId));
   const characterId=focus.inherited?focus.ownerId:preferred&&preferred.characterId!==own?preferred.id:chooseParent(state,analysis,focus,catalog,options.anchorSupportId);
   const parent=analysis.index.characters.get(characterId);
+  const fixed=catalog.supports.find(s=>s.id===FIXED_SUPPORT_ID),limit=fixed?5:6;
   const targets=farmingTargets(analysis,focus);
-  const allOptions=catalog.supports.filter(s=>s.characterId!==parent?.characterId).map(s=>supportOptions(s,analysis.index));
+  const allOptions=catalog.supports.filter(s=>s.characterId!==parent?.characterId&&s.characterId!==fixed?.characterId).map(s=>supportOptions(s,analysis.index));
   const sources=candidateSources(analysis,focus,catalog,characterId);
   const anchor=options.anchorSupportId?sources.find(s=>s.support.id===Number(options.anchorSupportId)):sources[0];
   const chosen=[],usedCharacters=new Set(),types=new Map(),covered=new Set();
-  const native=acquisitionRoutes({characterId,supports:[],eventChoices:{}},analysis.index,'factor');
+  const native=acquisitionRoutes({characterId,supports:fixed?[fixed.id]:[],eventChoices:{}},analysis.index,'factor');
   for(const id of native.keys())covered.add(id);
   const add=option=>{
     chosen.push(option);usedCharacters.add(option.support.characterId);
@@ -81,13 +84,13 @@ export function suggestFactorPlan(state,analysis,focus,catalog,options={}) {
   };
   const selectedAnchor=anchor&&(!covered.has(focus.skillId)||options.anchorSupportId)?anchor:null;
   if(selectedAnchor){const option=allOptions.find(o=>o[0]?.support.id===selectedAnchor.support.id)?.find(o=>Object.entries(selectedAnchor.eventChoices).every(([k,v])=>o.eventChoices[k]===v));if(option)add(option);}
-  while(chosen.length<6){
+  while(chosen.length<limit){
     const candidates=allOptions.filter(o=>o.length&&!usedCharacters.has(o[0].support.characterId)&&(types.get(o[0].support.type)??0)<(['friend','group'].includes(o[0].support.type)?1:2)).map(o=>bestOption(o,targets,focus,covered));
     const next=bestOption(candidates,targets,focus,covered);
     if(!next||coverageScore(next,targets,focus,covered)<=0)break;
     add(next);
   }
-  return normalizeFarmingProfile({characterId,supports:chosen.map(o=>o.support.id),eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),anchorSupportId:selectedAnchor?.support.id,scenario:options.scenario??(!anchor&&URA_METHODS[focus.name]?'ura':'support')},catalog);
+  return normalizeFarmingProfile({characterId,supports:[...Array.from({length:limit},(_,i)=>chosen[i]?.support.id??null),...(fixed?[fixed.id]:[])],redFactor:defaultRedFactor(analysis),eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),anchorSupportId:selectedAnchor?.support.id,scenario:options.scenario??(!anchor&&URA_METHODS[focus.name]?'ura':'support')},catalog);
 }
 
 export function completeFactorChoices(profile,analysis,focus,catalog) {

@@ -71,7 +71,7 @@ test('周回キャラ本人のサポートは候補から除外する',()=>{
  const fine=catalog.characters.find(c=>c.characterId===1022);
  assert.ok(candidateSources(a,focus,catalog,fine.id).every(s=>s.support.characterId!==1022));
  const p=normalizeFarmingProfile({characterId:fine.id,supports:[30283,30283],learned:'invalid',eventChoices:null},catalog);
- assert.ok(p.supports.every(id=>id===null));assert.deepEqual(p.learned,[]);
+ assert.deepEqual(p.supports,[null,null,null,null,null,30305]);assert.deepEqual(p.learned,[]);
 });
 test('周回の択を未指定へ戻したら自動で白択へ戻さない',()=>{
  const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体'),p=suggestFactorPlan(state,a,focus,catalog);

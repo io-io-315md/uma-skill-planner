@@ -23,7 +23,7 @@ function toast(message) { $('toast').textContent = message; $('toast').hidden = 
 function persist() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { toast('保存できませんでした。JSON書き出しでプランを保管してください。'); } }
 function update(patch = {}) { state = normalizeState({ ...state, ...patch }, catalog); persist(); render(); }
 function toggle(array, value) { return array.includes(value) ? array.filter(v => v !== value) : [...array, value]; }
-function checklistText(){const plan=state.lineagePlans[lineagePlanKey(state)];return exportChecklist(state,analysis)+(plan?'\n\n'+exportLineagePlan(plan,analysis):'');}
+function checklistText(){const plan=state.lineagePlans[lineagePlanKey(state)];return exportChecklist(state,analysis)+(plan?'\n\n'+exportLineagePlan(plan,analysis,state):'');}
 
 function render() {
   analysis = analyze(state, catalog);
@@ -122,7 +122,7 @@ function renderSaved() {
   $('saved-plans').innerHTML = state.plans.map((plan,i) => `<div class="saved-plan"><button data-load-plan="${i}">${escape(plan.label)}</button><button data-delete-plan="${i}" aria-label="保存プラン${i+1}を削除">×</button></div>`).join('');
 }
 function openPicker(kind,slot=0,context='main') {
-  if(kind==='support'&&context==='main'&&slot===FIXED_SUPPORT_SLOT)return;
+  if(kind==='support'&&slot===FIXED_SUPPORT_SLOT)return;
   picker = {kind,slot,type:'すべて',context,distance:context==='main'?(analysis.course.distanceType??'すべて'):'すべて',style:context==='main'?state.style:'すべて',dirtOnly:context==='main'&&analysis.course.surface==='ダート',allUsage:context!=='main'};
   $('picker-title').textContent = `${context==='main'?'本育成':'因子周回'}：${kind === 'character' ? 'ウマ娘を選択' : `サポート ${slot+1} を選択`}`;
   $('picker-eyebrow').textContent = kind === 'character' ? 'SELECT TRAINEE' : 'BUILD YOUR DECK';

@@ -1,6 +1,7 @@
 import { COURSES, RECOMMENDATIONS, STYLES } from './recommendations.js';
 import { resolvePriority, PRIORITIES } from './priorities.js';
-import { normalizeMainSupports, FIXED_SUPPORT_ID, FIXED_SUPPORT_SLOT, RENTAL_SUPPORT_SLOT } from './deck-rules.js';
+import { normalizeMainSupports, normalizeFarmingSupports, FIXED_SUPPORT_ID, FIXED_SUPPORT_SLOT, RENTAL_SUPPORT_SLOT } from './deck-rules.js';
+import { RED_FACTORS, redFactorDetails } from './factor-targets.js';
 import { skillMatchesRace } from './support-usage.js';
 export { PRIORITIES } from './priorities.js';
 
@@ -10,10 +11,10 @@ export const DEFAULT_STATE = { version: 2, courseId: COURSES[0].id, style: '先�
 export function normalizeFarmingProfile(raw, catalog) {
   const profile=raw&&typeof raw==='object'?raw:{};
   const char=catalog.characters.find(c=>c.id===Number(profile.characterId));
-  const seen=new Set();
   return {
     characterId:char?.id??null,
-    supports:Array.from({length:6},(_,i)=>{const s=catalog.supports.find(s=>s.id===Number(profile.supports?.[i]));if(!s||seen.has(s.characterId)||s.characterId===char?.characterId)return null;seen.add(s.characterId);return s.id;}),
+    supports:normalizeFarmingSupports(profile.supports,catalog,char?.characterId),
+    redFactor:RED_FACTORS.includes(profile.redFactor?.type)?{type:profile.redFactor.type,stars:[1,2,3].includes(profile.redFactor.stars)?profile.redFactor.stars:3}:null,
     eventChoices:profile.eventChoices&&typeof profile.eventChoices==='object'&&!Array.isArray(profile.eventChoices)?Object.fromEntries(Object.entries(profile.eventChoices).filter(([k,v])=>k.startsWith('evt_')&&typeof v==='string')):{},
     learned:Array.isArray(profile.learned)?[...new Set(profile.learned.filter(s=>typeof s==='string'))]:[],
     anchorSupportId:catalog.supports.some(s=>s.id===Number(profile.anchorSupportId))?Number(profile.anchorSupportId):null,
@@ -173,7 +174,8 @@ export function exportChecklist(state, analysis) {
     lines.push('因子周回プラン（本育成とは別編成）');
     for(const[key,plan]of farming){
       lines.push(`対象因子：${key.slice(prefix.length)}`,`周回キャラ：${index.characters.get(plan.characterId)?.name??'未選択'}`,`取得方法：${plan.scenario==='ura'?'URAの対決イベントも使用':'サポートのヒント・イベント'}`);
-      for(const[id,slot]of plan.supports.map((id,i)=>[id,i])){const support=index.supports.get(id);lines.push(`${slot+1}. ${support?.name??'空き枠'}`);for(const event of support?.events??[]){const choice=event.choices.find(c=>c.id===plan.eventChoices[event.id]);if(choice)lines.push(`  因子周回の択：${choice.label}`);}}
+      const red=redFactorDetails(plan,analysis);lines.push(`指定する赤因子：${red.type}（目標★${red.stars}・星数は抽選）`);
+      for(const[id,slot]of plan.supports.map((id,i)=>[id,i])){const support=index.supports.get(id);lines.push(`${slot+1}. ${support?.name??'空き枠'}${slot===FIXED_SUPPORT_SLOT?' [自前・固定]':''}`);for(const event of support?.events??[]){const choice=event.choices.find(c=>c.id===plan.eventChoices[event.id]);if(choice)lines.push(`  因子周回の択：${choice.label}`);}}
       if(plan.learned.length)lines.push(`周回の取得済み：${plan.learned.join(' / ')}（因子の準備完了とは別）`);
       lines.push('');
     }

@@ -12,7 +12,7 @@ const RULES = {
   '非根幹距離○': { priority: 3, reason: 'スタミナ補強用。条件は一致するが、スピード緑・主加速と同じ必須度にはしない。', sources: ['noteKyotoFront','noteNakayama'] },
   '良バ場○': { priority: 3, reason: '良バ場でパワーを補う。スピード緑や主要速度を確保した後に検討。', sources: ['december','noteKyotoFront'] },
   '晴れの日○': { priority: 3, reason: '根性補強用。発動条件は一致するが、取得Ptはスピード緑や主要速度を先に使う。', sources: ['december'] },
-  '自制心': { priority: 1, reason: '掛かりを抑えて長距離の安定性を補う。特にLoHでは事故を減らす候補として優先。', byCourse: { '2026-12-cm': 2 }, sources: ['noteKyotoFront','noteKyotoEscape','noteNakayama'] },
+  '自制心': { priority: 1, reason: '掛かりを抑えて長距離の安定性を補う。', byCourse: { '2026-11-loh': 2, '2026-12-cm': 2 }, courseReasons: { '2026-11-loh':'今回の京都3000mは優先度「中」に設定。スピード緑・主加速・真髄体を先に確保し、掛かり対策として追加。' }, sources: ['noteKyotoFront','noteKyotoEscape','noteNakayama'] },
   '連綿': { priority: 2, reason: '継承3個以上で効果が増える中盤速度。育成キャラ・編成で取れない場合は因子の優先候補。', conditionLabel: '継承スキル3個以上で強化', sources: ['noteKyotoFront','noteKyotoEscape','renmen'] },
   '登山家': { priority: 2, reason: '京都3000mの序盤・終盤の上り坂で使う加速。発動位置で働きが変わるため、主加速を確保して追加。', conditionLabel: '発動する坂で効果が変わる', sources: ['noteKyotoFront','noteKyotoEscape','november2'] },
   'ウマ好み': { priority: 1, reason: '序盤の位置取りを補う重要な速度。先行・差し・追込で優先して確保。', sources: ['november2','december2'] },
@@ -42,7 +42,7 @@ export function resolvePriority(rule, courseId, style) {
   const detail = RULES[rule.name];
   return {
     priority: detail?.byCourse?.[courseId] ?? detail?.byStyle?.[style] ?? detail?.priority ?? rule.priority,
-    priorityReason: detail?.reason ?? rule.reason,
+    priorityReason: detail?.courseReasons?.[courseId] ?? detail?.reason ?? rule.reason,
     conditionLabel: detail?.conditionLabel ?? rule.conditionLabel ?? '',
     prioritySources: detail?.sources ?? rule.sources
   };

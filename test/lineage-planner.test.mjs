@@ -44,7 +44,8 @@ test('京都3000の実データでは全脚質で高を網羅し、同キャラ�
       const char=analysis.index.characters.get(node.characterId),cards=node.supports.filter(Boolean).map(id=>analysis.index.supports.get(id));
       assert.equal(new Set(cards.map(s=>s.characterId)).size,cards.length);
       assert.ok(cards.every(s=>s.characterId!==char.characterId));
-      assert.ok(!node.supports.includes(30305),'本育成の固定たづなを周回に強制しない');
+      assert.equal(node.supports[5],30305,'今回の周回案はたづな1枠を確保する');
+      assert.equal(node.supports.filter(id=>id===30305).length,1);
       assert.ok(r.assignments[i].every(t=>r.results[i].covered.some(row=>row.skillId===t.skillId)));
     }
     assert.ok(r.covered.every(t=>r.assignments.some(rows=>rows.some(r=>r.skillId===t.skillId))));
@@ -105,5 +106,5 @@ test('インポート時の不正な系譜を補正し、本人や重複キャ�
   const p=normalizeLineagePlan({friendSide:9,nodes:[{characterId:107601},{characterId:113501},{characterId:113501},{characterId:999999}]},catalog,107601);
   assert.equal(p.friendSide,1);assert.equal(p.nodes.length,6);
   assert.deepEqual(p.nodes.slice(0,4).map(n=>n.characterId),[null,113501,null,null]);
-  assert.deepEqual(p.nodes[1].supports,[null,null,null,null,null,null]);
+  assert.deepEqual(p.nodes[1].supports,[null,null,null,null,null,30305]);
 });

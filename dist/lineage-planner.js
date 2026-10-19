@@ -1,5 +1,7 @@
 import { acquisitionRoutes, normalizeFarmingProfile, normalizeLineagePlan } from './engine.js';
 import { farmingTargets, supportOptions, URA_METHODS } from './factor-planner.js';
+import { FIXED_SUPPORT_ID } from './deck-rules.js';
+import { suggestRedFactors, analyzeRedPlan } from './factor-targets.js';
 
 export const LINEAGE_NODES=[
   {label:'親1',side:0,generation:'parent'},
@@ -11,7 +13,7 @@ export const LINEAGE_NODES=[
 ];
 export const branchIndices=side=>[side,2+side*2,3+side*2];
 export const lineagePlanKey=state=>`${state.courseId}:${state.style}:${state.characterId??0}`;
-export const lineageSignature=(state,analysis)=>JSON.stringify([state.supports,Object.entries(state.eventChoices).sort(),state.supplied.slice().sort(),state.excluded.slice().sort(),analysis.rows.map(r=>[r.name,r.priority,r.status,r.excluded])]);
+export const lineageSignature=(state,analysis)=>JSON.stringify(['tazuna-red-v2',state.supports,Object.entries(state.eventChoices).sort(),state.supplied.slice().sort(),state.excluded.slice().sort(),analysis.rows.map(r=>[r.name,r.priority,r.status,r.excluded])]);
 const inheritanceTargets=analysis=>analysis.rows.filter(r=>r.status==='inheritance'&&!r.excluded);
 const compare=(a,b)=>{for(let i=0;i<a.length;i++){const diff=a[i]-b[i];if(diff)return diff;}return 0;};
 const known=route=>route.kind!=='event-unverified';
@@ -48,10 +50,11 @@ const newer=(a,b)=>recency(a)[0].localeCompare(recency(b)[0])||recency(a)[1]-rec
 
 export function suggestCoverageDeck(characterId,analysis,catalog,{alreadyCovered=new Set(),scenario='support',options:cachedOptions}={}) {
   const targets=farmingTargets(analysis),parent=analysis.index.characters.get(characterId);
+  const fixed=catalog.supports.find(s=>s.id===FIXED_SUPPORT_ID),limit=fixed?5:6;
   const targetIds=new Set(targets.map(r=>r.skillId));
-  const options=(cachedOptions??catalog.supports.flatMap(s=>supportOptions(s,analysis.index))).filter(o=>o.support.characterId!==parent?.characterId)
+  const options=(cachedOptions??catalog.supports.flatMap(s=>supportOptions(s,analysis.index))).filter(o=>o.support.characterId!==parent?.characterId&&o.support.characterId!==fixed?.characterId)
     .map(o=>({...o,ids:optionIds(o).filter(id=>targetIds.has(id))})).filter(o=>o.ids.length);
-  const native=new Set([...coverageRoutes({characterId,supports:[],eventChoices:{},scenario},analysis)].filter(([,r])=>r.some(known)).map(([id])=>id));
+  const native=new Set([...coverageRoutes({characterId,supports:fixed?[fixed.id]:[],eventChoices:{},scenario},analysis)].filter(([,r])=>r.some(known)).map(([id])=>id));
   const union=deck=>new Set([...native,...deck.flatMap(o=>o.ids)]);
   const score=deck=>coverageVector(union(deck),targets,alreadyCovered);
   const bestOf=(candidates,deck)=>{
@@ -61,7 +64,7 @@ export function suggestCoverageDeck(characterId,analysis,catalog,{alreadyCovered
   };
   function search(seed){
     const chosen=seed?[seed]:[];
-    while(chosen.length<6){
+    while(chosen.length<limit){
       const used=new Set(chosen.map(o=>o.support.characterId));
       const next=bestOf(options.filter(o=>!used.has(o.support.characterId)),chosen);
       if(!next||compare(score([...chosen,next]),score(chosen))<=0)break;
@@ -85,7 +88,7 @@ export function suggestCoverageDeck(characterId,analysis,catalog,{alreadyCovered
   const seeds=[null,...targets.filter(r=>r.priority===1&&!native.has(r.skillId)).map(r=>bestOf(options.filter(o=>o.ids.includes(r.skillId)),[]))].filter((s,i,a)=>i===0||s&&!a.slice(1,i).some(o=>o?.support.id===s.support.id&&JSON.stringify(o.eventChoices)===JSON.stringify(s.eventChoices)));
   let chosen=[];
   for(const seed of seeds){const candidate=search(seed);if(compare(score(candidate),score(chosen))>0)chosen=candidate;}
-  return normalizeFarmingProfile({characterId,supports:chosen.map(o=>o.support.id),eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),scenario},catalog);
+  return normalizeFarmingProfile({characterId,supports:[...Array.from({length:limit},(_,i)=>chosen[i]?.support.id??null),...(fixed?[fixed.id]:[])],eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),scenario},catalog);
 }
 
 export function completeCoverageChoices(profile,analysis,catalog) {
@@ -143,6 +146,7 @@ export function suggestLineagePlan(state,analysis,catalog,{previous,resetTree=fa
   const alreadyCovered=new Set(),nodes=[];
   for(let i=0;i<6;i++){
     const node=suggestCoverageDeck(ids[i],analysis,catalog,{alreadyCovered,options,scenario:seed?.nodes[i].scenario??'support'});
+    node.redFactor=seed?.nodes[i].redFactor??null;
     nodes.push(node);analyzeCoverageProfile(node,analysis).covered.forEach(r=>alreadyCovered.add(r.skillId));
   }
   // On an initial proposal, compare one URA grandparent as a complement when
@@ -156,8 +160,9 @@ export function suggestLineagePlan(state,analysis,catalog,{previous,resetTree=fa
       const all=new Set([...rest,...analyzeCoverageProfile(node,analysis).covered.map(r=>r.skillId)]),value=coverageVector(all,targets);
       if(compare(value,bestScore)>0){best={slot,node};bestScore=value;}
     }
-    if(best)nodes[best.slot]=best.node;
+    if(best){best.node.redFactor=nodes[best.slot].redFactor;nodes[best.slot]=best.node;}
   }
+  suggestRedFactors(state,analysis,nodes).forEach((redFactor,i)=>nodes[i].redFactor=redFactor);
   return normalizeLineagePlan({nodes,friendSide:seed?.friendSide??1,signature:lineageSignature(state,analysis),manual:false},catalog,state.characterId);
 }
 
@@ -188,8 +193,9 @@ export function analyzeLineagePlan(plan,analysis) {
   return {results,targets,covered,missing,assignments,inheritance,friendTargets,friendOnly,friendNodes,ownNodes};
 }
 
-export function exportLineagePlan(plan,analysis) {
+export function exportLineagePlan(plan,analysis,state={}) {
   const result=analyzeLineagePlan(plan,analysis),lines=['親・祖父母の因子設計'];
+  const red=analyzeRedPlan(state,analysis,plan);
   for(let i=0;i<6;i++){
     const node=plan.nodes[i],meta=LINEAGE_NODES[i],character=analysis.index.characters.get(node.characterId);
     const borrowed=meta.side===plan.friendSide;
@@ -197,7 +203,8 @@ export function exportLineagePlan(plan,analysis) {
     const unique=result.inheritance.find(r=>r.node===i);
     if(unique)lines.push(`固有：${unique.name}${unique.evolvedInheritance?(i<2?'（直接親・対象衣装の本人所持が必要）':'（祖父母では継承進化不可）'):i<2?'（直接親）':'（育成中の継承抽選）'}`);
     lines.push(`用意する白因子：${result.assignments[i].map(r=>`[${['','高','中','低'][r.priority]}] ${r.name}`).join(' / ')||'取得ルート・手持ちに応じて追加'}`);
-    lines.push(`因子厳選サポカ：${node.supports.map(id=>analysis.index.supports.get(id)?.name??'自由枠').join(' / ')}`);
+    lines.push(`指定する赤因子：${red.targets[i].type}（目標★${red.targets[i].stars}・星数は抽選）`,red.targets[i].preparation);
+    lines.push(`因子厳選サポカ：${node.supports.map((id,slot)=>(analysis.index.supports.get(id)?.name??'自由枠')+(slot===5?' [自前・固定]':'')).join(' / ')}`);
     for(const id of node.supports){const support=analysis.index.supports.get(id);for(const event of support?.events??[]){const choice=event.choices.find(c=>c.id===node.eventChoices[event.id]);if(choice)lines.push(`  ${support.characterName}の択：${choice.label}`);}}
     if(node.scenario==='ura')lines.push('URAの真髄対決イベントも使用');
   }
