@@ -1,4 +1,4 @@
-import { COURSES, RECOMMENDATIONS, STYLES } from './recommendations.js';
+import { COURSES, RECOMMENDATIONS, STYLES, SOURCES, LIVE_METADATA } from './recommendations.js';
 import { resolvePriority, PRIORITIES } from './priorities.js';
 import { normalizeMainSupports, normalizeFarmingSupports, FIXED_SUPPORT_ID, FIXED_SUPPORT_SLOT, RENTAL_SUPPORT_SLOT } from './deck-rules.js';
 import { RED_FACTORS, redFactorDetails } from './factor-targets.js';
@@ -7,7 +7,7 @@ import { FARMING_POLICY, INHERITED_FACTOR_NOTE, usesInheritedFactor } from './fa
 export { PRIORITIES } from './priorities.js';
 
 export const TYPE_LABELS = { speed: 'スピード', stamina: 'スタミナ', power: 'パワー', guts: '根性', wit: '賢さ', friend: '友人', group: 'グループ' };
-export const DEFAULT_STATE = { version: 2, courseId: COURSES[0].id, style: '先行', characterId: null, awakening: 5, supports: [null,null,null,null,null,FIXED_SUPPORT_ID], eventChoices: {}, supplied: [], prepared: [], excluded: [], farmingPlans: {}, lineagePlans: {}, plans: [] };
+export const DEFAULT_STATE = { version: 2, courseId: COURSES[0].id, style: '先行', characterId: null, awakening: 5, supports: [null,null,null,null,null,FIXED_SUPPORT_ID], eventChoices: {}, mainDeck:{mode:'auto'}, supplied: [], prepared: [], excluded: [], farmingPlans: {}, lineagePlans: {}, plans: [] };
 
 export function normalizeFarmingProfile(raw, catalog) {
   const profile=raw&&typeof raw==='object'?raw:{};
@@ -51,6 +51,8 @@ export function normalizeState(raw, catalog) {
   const eventIndex=createIndex(catalog);
   const events=new Map(catalog.supports.flatMap(s=>s.events.filter(e=>e.selection==='single').map(e=>[e.id,e])));
   state.eventChoices=Object.fromEntries(Object.entries(state.eventChoices).filter(([id,value])=>typeof value==='string'&&events.has(id)&&(value===''||eventChoicesForPurpose(events.get(id),eventIndex,'main').some(c=>c.id===value))));
+  const deck=state.mainDeck&&typeof state.mainDeck==='object'?state.mainDeck:{};
+  state.mainDeck={mode:deck.mode==='manual'?'manual':'auto',revision:typeof deck.revision==='string'?deck.revision.slice(0,100):'',status:deck.status==='reviewed'?'reviewed':'provisional',sourceIds:Array.isArray(deck.sourceIds)?deck.sourceIds.filter(id=>typeof id==='string').slice(0,12):[],reasons:Array.isArray(deck.reasons)?deck.reasons.filter(r=>r&&Number.isInteger(r.slot)&&r.slot>=0&&r.slot<5&&catalog.supports.some(c=>c.id===r.cardId)).map(r=>({slot:r.slot,cardId:r.cardId,replacement:r.replacement===true,gold:Array.isArray(r.gold)?r.gold.filter(n=>typeof n==='string').slice(0,6):[]})):[]};
   state.plans = Array.isArray(state.plans) ? state.plans.filter(p => p && typeof p.label === 'string' && p.state && typeof p.state === 'object').slice(0,20) : [];
   state.version=2;
   state.farmingPlans=state.farmingPlans&&typeof state.farmingPlans==='object'&&!Array.isArray(state.farmingPlans)?Object.fromEntries(Object.entries(state.farmingPlans).filter(([key,value])=>key.length<250&&value&&typeof value==='object').slice(-120).map(([key,value])=>[key,normalizeFarmingProfile(value,catalog)])):{};
@@ -183,6 +185,6 @@ export function exportChecklist(state, analysis) {
       lines.push('');
     }
   }
-  lines.push('優先度は編集上の目安。全候補を必須とはしません。ヒント・イベント・因子の発生は確約しません。', '本育成のシナリオ固有の取得経路は自動計上しません。「別ルートで取得」に設定して補ってください。', `参照：https://dmg.umamusume.jp/news/detail/?id=3483 / 確認日：2026-10-18`);
+  lines.push('優先度は編集上の目安。全候補を必須とはしません。ヒント・イベント・因子の発生は確約しません。', '本育成のシナリオ固有の取得経路は自動計上しません。「別ルートで取得」に設定して補ってください。', `参照：${SOURCES[course.source]?.url??SOURCES.official.url} / 確認日：${LIVE_METADATA.verifiedAt}`);
   return lines.join('\n');
 }

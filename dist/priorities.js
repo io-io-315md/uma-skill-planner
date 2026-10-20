@@ -1,6 +1,7 @@
 // 取得優先度。特定デッキを前提にした「因子周回の順位」とは分けて扱う。
 // 優先度が高い場合も発動条件・持久力・本体の加速を確認する。勝率計算ではない。
 export const PRIORITIES = { 1: '高', 2: '中', 3: '低' };
+export { RULES as PRIORITY_RULES };
 
 const RULES = {
   'レースの真髄・体': { priority: 1, reason: '白スキルで終盤の速度を大きく補える。持久力消費を織り込んで走り切れる構成で最優先。', conditionLabel: '持久力確保前提', sources: ['shinzui','shinzuiBody','longSkills'] },

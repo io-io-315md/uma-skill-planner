@@ -1,5 +1,5 @@
-import { COURSES, STYLES, CATEGORIES, SOURCES, VERIFIED_AT } from './recommendations.js';
-import { DEFAULT_STATE, normalizeState, analyze, TYPE_LABELS, PRIORITIES, exportChecklist, eventChoicesForPurpose, resolvedEventChoice } from './engine.js';
+import { COURSES, STYLES, CATEGORIES, SOURCES } from './recommendations.js';
+import { DEFAULT_STATE, normalizeState, analyze, TYPE_LABELS, PRIORITIES, exportChecklist, eventChoicesForPurpose, resolvedEventChoice, acquisitionRoutes } from './engine.js';
 import { needsFactor } from './factor-planner.js';
 import { createFactorUI } from './factor-ui.js';
 import { createLineageUI } from './lineage-ui.js';
@@ -7,8 +7,11 @@ import { exportLineagePlan, lineagePlanKey, refreshSavedFarmingPlans } from './l
 import { artwork } from './ui.js';
 import { createTierUI } from './tier-ui.js';
 import { selectSupportCandidates } from './support-picker.js';
-import { createSupportUsageIndex, DISTANCES, RUN_STYLES, targetLabel } from './support-usage.js';
+import { createSupportUsageIndex, DISTANCES, RUN_STYLES, targetLabel, skillMatchesRace } from './support-usage.js';
 import { FIXED_SUPPORT_SLOT, RENTAL_SUPPORT_SLOT } from './deck-rules.js';
+import { MAIN_DECK_GUIDE } from './main-deck-data.js';
+import { applyMainDeck, changeMainConditions } from './main-deck.js';
+import { loadLiveData, applyLiveData } from './live-data.js';
 
 const $ = id => document.getElementById(id);
 const escape = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -18,10 +21,17 @@ let catalog, state, analysis, factorUI, lineageUI, tierUI, supportUsage;
 let view = 'factor', category = 'すべて', priorityFilter = 'all', query = '', showExcluded = false;
 let picker = { kind:'character', slot:0, type:'すべて', context:'main' };
 let toastTimer;
+let liveSource='bundled',refreshing=false;
+const liveStorage={getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)};
 
 function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').hidden = true, 4300); }
 function persist() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { toast('保存できませんでした。JSON書き出しでプランを保管してください。'); } }
-function update(patch = {}) { state = normalizeState({ ...state, ...patch }, catalog); persist(); render(); }
+function update(patch = {},options={}) {
+  const changed=['characterId','style','courseId'].some(k=>Object.hasOwn(patch,k)&&patch[k]!==state[k]);
+  state=options.preserve?normalizeState({...state,...patch},catalog):changeMainConditions(state,patch,catalog,MAIN_DECK_GUIDE,options);
+  if((patch.supports||patch.eventChoices)&&!changed&&!options.force)state.mainDeck.mode='manual';
+  persist();render();
+}
 function toggle(array, value) { return array.includes(value) ? array.filter(v => v !== value) : [...array, value]; }
 function checklistText(){const plan=state.lineagePlans[lineagePlanKey(state)];return exportChecklist(state,analysis)+(plan?'\n\n'+exportLineagePlan(plan,analysis,state):'');}
 
@@ -30,6 +40,22 @@ function render() {
   const refreshed=refreshSavedFarmingPlans(state,analysis,catalog);
   if(refreshed!==state){state=refreshed;persist();}
   renderCourses(); renderSetup(); renderResults(); renderSaved(); factorUI?.render(); tierUI?.render();
+}
+async function refreshLiveData(){
+  if(refreshing||!catalog)return;
+  refreshing=true;renderSetup();
+  try{
+    const response=await fetch(new URL('./data/catalog.json',import.meta.url),{cache:'no-store',signal:AbortSignal.timeout(8000)});
+    if(!response.ok)throw new Error('Catalog unavailable');
+    const nextCatalog=await response.json();
+    const live=await loadLiveData(nextCatalog,{storage:liveStorage});
+    if(!live.data){liveSource='cache';toast('更新データを取得できませんでした。現在のデータを保持しています。');return;}
+    applyLiveData(live.data);catalog=nextCatalog;liveSource=live.source;
+    supportUsage=createSupportUsageIndex(catalog);
+    state=applyMainDeck(normalizeState(state,catalog),catalog,MAIN_DECK_GUIDE);persist();
+    toast(live.source==='network'?'開催条件・推奨編成・不足因子を更新しました。':'更新できないため、前回のデータで再編成しました。');
+  }catch{liveSource='cache';toast('更新データを取得できませんでした。現在の編成を保持しています。');}
+  finally{refreshing=false;render();}
 }
 function renderCourses() {
   const c = analysis.course;
@@ -41,13 +67,22 @@ function renderSetup() {
   const char = analysis.index.characters.get(state.characterId);
   $('character-label').innerHTML = char ? `${artwork(char)}<span>${escape(char.name)}</span>` : 'ウマ娘を選択';
   const aptitude=char?.aptitude,styleIndex=STYLES.indexOf(state.style)+6;
-  $('character-note').textContent=char?`覚醒は最大で判定。初期適性：長距離 ${aptitude?.[5]??'不明'} / ${state.style} ${aptitude?.[styleIndex]??'不明'}`:'本育成で作るウマ娘を選択します。';
+  const distance=analysis.course.distanceType,distanceIndex={短距離:2,マイル:3,中距離:4,長距離:5}[distance];
+  $('character-note').textContent=char?`覚醒は最大で判定。初期適性：${distance} ${aptitude?.[distanceIndex]??'不明'} / ${state.style} ${aptitude?.[styleIndex]??'不明'}`:'本育成で作るウマ娘を選択します。';
   $('style-buttons').innerHTML=STYLES.map(style=>`<button class="style-button ${style===state.style?'active':''}" data-style="${style}" aria-pressed="${style===state.style}">${style}</button>`).join('');
   $('support-count').textContent=`${state.supports.filter(Boolean).length} / 6`;
+  $('main-deck-mode').textContent=state.mainDeck.mode==='manual'?'手動調整中':state.mainDeck.status==='reviewed'?'自動編成':'暫定編成';
+  $('main-deck-apply').disabled=!char;
+  $('main-deck-note').textContent=!char?'キャラを選ぶと、レースと脚質に合う編成をセットします。':`${analysis.course.venue??'コース未発表'} ${analysis.course.distance?analysis.course.distance+'m':distance}・${state.style} / ${MAIN_DECK_GUIDE.scenario}${state.mainDeck.status==='reviewed'?'':'（発表済みの距離・脚質による暫定案）'}`;
+  $('live-data-state').textContent=refreshing?'更新データを確認中…':`${liveSource==='network'?'公開データ取得済み':liveSource==='cache'?'更新できないため前回のデータ':'同梱データを使用'} / ${MAIN_DECK_GUIDE.verifiedAt.replaceAll('-','.')}`;
+  $('refresh-data').disabled=refreshing;
+  $('data-edition').textContent=`編成・開催 ${MAIN_DECK_GUIDE.verifiedAt.replaceAll('-','.')} / DB ${catalog.retrievedAt.replaceAll('-','.')}`;
+  $('main-deck-sources').innerHTML=(state.mainDeck.sourceIds.length?state.mainDeck.sourceIds:['novemberDecks','decemberDecks']).filter(id=>SOURCES[id]).map(id=>`<a href="${escape(SOURCES[id].url)}" target="_blank" rel="noopener noreferrer">${escape(SOURCES[id].name)} ↗</a>`).join('');
   $('support-slots').innerHTML=state.supports.map((id,i)=>{
     const support=analysis.index.supports.get(id);
+    const goldRoles=support?[...acquisitionRoutes({...state,characterId:null,supports:[id]},analysis.index)].filter(([id,routes])=>analysis.index.skills.get(id)?.rarity===2&&skillMatchesRace(analysis.index.skills.get(id),analysis.course,state.style)&&routes.some(r=>r.kind!=='event-unverified')).map(([id])=>analysis.index.skills.get(id).name):[];
     const fixed=i===FIXED_SUPPORT_SLOT,tag=fixed?'div':'button',assignment=fixed?'自前・固定':i===RENTAL_SUPPORT_SLOT?'レンタル':'自前';
-    return `<div class="support-slot ${fixed?'fixed-support-slot':''}"><div class="support-slot-main"><span class="slot-number">${String(i+1).padStart(2,'0')}</span><${tag} class="slot-select visual-slot-select" ${fixed?'role="group" aria-label="サポート6：SSRたづな・自前固定"':`data-slot="${i}" aria-label="サポート${i+1}を選択"`}>${support?`${artwork(support)}<span class="slot-copy"><span class="slot-assignment ${fixed?'fixed-assignment':''}">${assignment}</span><span class="slot-title">${escape(support.title)}</span><strong>${escape(support.characterName)}</strong><small>${TYPE_LABELS[support.type]}・${support.rarity}</small></span>`:`<span class="empty-slot-art">＋</span><span><span class="slot-assignment">${assignment}</span><strong class="empty-title">サポートを選択</strong></span>`}</${tag}>${support&&!fixed?`<button class="remove-support" data-remove="${i}" aria-label="サポート${i+1}を外す">×</button>`:''}</div>${(support?.events??[]).filter(e=>e.selection==='single').map(event=>{
+    return `<div class="support-slot ${fixed?'fixed-support-slot':''}"><div class="support-slot-main"><span class="slot-number">${String(i+1).padStart(2,'0')}</span><${tag} class="slot-select visual-slot-select" ${fixed?'role="group" aria-label="サポート6：SSRたづな・自前固定"':`data-slot="${i}" aria-label="サポート${i+1}を選択"`}>${support?`${artwork(support)}<span class="slot-copy"><span class="slot-assignment ${fixed?'fixed-assignment':''}">${assignment}</span><span class="slot-title">${escape(support.title)}</span><strong>${escape(support.characterName)}</strong><small>${TYPE_LABELS[support.type]}・${support.rarity}</small></span>`:`<span class="empty-slot-art">＋</span><span><span class="slot-assignment">${assignment}</span><strong class="empty-title">サポートを選択</strong></span>`}</${tag}>${support&&!fixed?`<button class="remove-support" data-remove="${i}" aria-label="サポート${i+1}を外す">×</button>`:''}</div>${goldRoles.length?`<p class="main-card-role">金スキル候補：${goldRoles.map(escape).join(' / ')}</p>`:''}${(support?.events??[]).filter(e=>e.selection==='single').map(event=>{
       const choices=eventChoicesForPurpose(event,analysis.index,'main');
       const chosen=resolvedEventChoice(event,state,analysis.index,'main');
       const explicit=choices.some(c=>c.id===state.eventChoices[event.id]);
@@ -166,7 +201,7 @@ function renderSupportCandidate(card) {
 }
 function openInfo(title, html) { $('info-title').textContent = title; $('info-content').innerHTML = html; $('info-dialog').showModal(); }
 function showSources() {
-  openInfo('データ・出典と判定の範囲', `<p>開催条件はCygamesの公式発表、推奨は各攻略資料を確認しています。スキル・編成の対応は非公式データベースに基づきます。</p><h3>データの範囲</h3><p>取得日 ${VERIFIED_AT}。育成キャラ ${catalog.characters.length}衣装 / サポート ${catalog.supports.length}枚 / 詳細なイベント選択肢 ${catalog.supports.filter(s => s.events.length).length}枚。10月チャンミは含めません。1〜3月の未発表条件は推測しません。</p><h3>取得優先度について</h3><p>優先度は高・中・低の3段階です。コースと脚質に合うスキルを、発動条件・役割・取得Ptに対する効果を参考に分類しています。公式のランキングや勝率計算ではありません。</p><p>真髄・体の優先度「高」は消費分も走り切れる持久力の確保が前提です。noteの編成別因子優先度と、取得時の優先度は区別しています。同コースの過去開催資料は参考として明記しています。</p><h3>取得判定について</h3><ul><li>初期・最大覚醒Lvまでの自前スキル、育成キャラのイベント、サポートヒント・イベントを照合します。</li><li>本育成では金スキル側の択を優先します。因子周回の白スキル択は別の編成に保存し、本育成の取得経路には混ぜません。詳細未登録のイベントは要確認とします。</li><li>キャラの進化スキルは加速量などを自動比較しません。本体で足りるものは「今回は見送る」で調整してください。</li><li>本育成のシナリオ固有・共通イベント等は自動計上しません。「別ルートで取得する予定にする」で補えます。因子周回でURAを選んだ場合は、真髄・体／力／速の対決イベントを取得候補に加えます。</li><li>白因子候補は、この編成の登録済み取得経路に見つからない白スキルです。因子発動や取得を保証する表示ではありません。</li><li>推奨はすべてを必須とするものではありません。最終スタミナ、対戦相手、所持キャラに応じて判断してください。</li></ul><h3>参照元</h3>${Object.values(SOURCES).map(s => `<div class="source-row"><small>${escape(s.kind)}</small><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escape(s.name)} ↗</a></div>`).join('')}<h3>保存と更新</h3><p>プランはこのブラウザーのlocalStorageに保存します。サーバーへの送信は行いません。データや開催条件は自動追従しません。GitHub上のデータ更新を反映してください。</p><p>「ウマ娘 プリティーダービー」の権利は株式会社Cygames等の権利者に帰属します。本ツールは非公式です。キャラのゲーム内顔アイコンはウマ娘DB、サポカ画像はGameToraから取得し、個別画像を同梱しています。</p>`);
+  openInfo('データ・出典と判定の範囲', `<p>開催条件はCygamesの公式発表、推奨は各攻略資料を確認しています。スキル・編成の対応は非公式データベースに基づきます。</p><h3>データの範囲</h3><p>キャラ・サポカDB取得日 ${catalog.retrievedAt}。編成・開催確認日 ${MAIN_DECK_GUIDE.verifiedAt}。育成キャラ ${catalog.characters.length}衣装 / サポート ${catalog.supports.length}枚 / 詳細なイベント選択肢 ${catalog.supports.filter(s => s.events.length).length}枚。10月チャンミは含めません。1〜3月の未発表条件は推測しません。</p><h3>取得優先度について</h3><p>優先度は高・中・低の3段階です。コースと脚質に合うスキルを、発動条件・役割・取得Ptに対する効果を参考に分類しています。公式のランキングや勝率計算ではありません。</p><p>真髄・体の優先度「高」は消費分も走り切れる持久力の確保が前提です。noteの編成別因子優先度と、取得時の優先度は区別しています。同コースの過去開催資料は参考として明記しています。</p><h3>取得判定について</h3><ul><li>初期・最大覚醒Lvまでの自前スキル、育成キャラのイベント、サポートヒント・イベントを照合します。</li><li>本育成では金スキル側の択を優先します。因子周回の白スキル択は別の編成に保存し、本育成の取得経路には混ぜません。詳細未登録のイベントは要確認とします。</li><li>キャラの進化スキルは加速量などを自動比較しません。本体で足りるものは「今回は見送る」で調整してください。</li><li>本育成のシナリオ固有・共通イベント等は自動計上しません。「別ルートで取得する予定にする」で補えます。因子周回でURAを選んだ場合は、真髄・体／力／速の対決イベントを取得候補に加えます。</li><li>白因子候補は、この編成の登録済み取得経路に見つからない白スキルです。因子発動や取得を保証する表示ではありません。</li><li>推奨はすべてを必須とするものではありません。最終スタミナ、対戦相手、所持キャラに応じて判断してください。</li></ul><h3>参照元</h3>${Object.values(SOURCES).map(s => `<div class="source-row"><small>${escape(s.kind)}</small><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escape(s.name)} ↗</a></div>`).join('')}<h3>保存と更新</h3><p>プランはこのブラウザーのlocalStorageに保存します。サーバーへの送信は行いません。ページを開くと公開済みの最新の編成・開催条件・スキル情報を取得し、本育成の編成と不足因子を更新します。「最新情報を更新」から再取得もできます。通信できない場合は前回の検証済みデータか同梱データを使います。攻略サイトの変更を直接自動判定する機能ではなく、確認して公開した更新データを反映します。</p><p>「ウマ娘 プリティーダービー」の権利は株式会社Cygames等の権利者に帰属します。本ツールは非公式です。キャラのゲーム内顔アイコンはウマ娘DB、サポカ画像はGameToraから取得し、個別画像を同梱しています。</p>`);
 }
 function download(name,text,type='text/plain;charset=utf-8') { const url = URL.createObjectURL(new Blob([text],{type})); const a = document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(() => URL.revokeObjectURL(url),1000); }
 
@@ -174,8 +209,8 @@ document.addEventListener('click', event => {
   const button = event.target.closest('button'); if (!button || !catalog) return;
   const d = button.dataset;
   if(d.factorOpen)factorUI.open(d.factorOpen);
-  else if (d.course) { category='すべて'; priorityFilter='all'; update({courseId:d.course}); }
-  else if (d.style) update({style:d.style});
+  else if (d.course) { category='すべて'; priorityFilter='all'; update({courseId:d.course},{force:true}); }
+  else if (d.style) update({style:d.style},{force:true});
   else if (d.slot !== undefined) openPicker('support',Number(d.slot));
   else if (d.remove !== undefined) { const supports=[...state.supports];supports[Number(d.remove)]=null;update({supports}); }
   else if (d.view) { view=d.view;renderResults(); }
@@ -191,13 +226,13 @@ document.addEventListener('click', event => {
     const id=Number(d.pick);
     if(picker.context==='lineage'){if(picker.kind==='character')lineageUI.chooseCharacter(id);else lineageUI.chooseSupport(id,picker.slot);}
     else if(picker.context==='farming'){if(picker.kind==='character')factorUI.chooseCharacter(id);else factorUI.chooseSupport(id,picker.slot);}
-    else if (picker.kind === 'character') { const old=state.supports.filter(Boolean).length;update({characterId:id});if(state.supports.filter(Boolean).length<old)toast('育成キャラ本人のサポートを編成から外しました。'); }
+    else if (picker.kind === 'character') { update({characterId:id},{chooseStyle:true,force:true});toast('キャラ・脚質・レースに合わせて編成しました。'); }
     else { const supports=[...state.supports];supports[picker.slot]=id;update({supports}); }
     $('picker-dialog').close();
   }
   else if (d.supplied) { update({supplied:toggle(state.supplied,d.supplied)});toast('取得予定を更新しました。'); }
   else if (d.excluded) update({excluded:toggle(state.excluded,d.excluded)});
-  else if (d.loadPlan !== undefined) {const saved=state.plans[Number(d.loadPlan)];if(saved)update({...saved.state,plans:state.plans});toast('プランを読み込みました。');}
+  else if (d.loadPlan !== undefined) {const saved=state.plans[Number(d.loadPlan)];if(saved)update({...saved.state,mainDeck:{...saved.state.mainDeck,mode:'manual'},plans:state.plans},{preserve:true});toast('保存した編成を読み込みました。');}
   else if (d.deletePlan !== undefined) update({plans:state.plans.filter((_,i)=>i!==Number(d.deletePlan))});
 });
 document.addEventListener('change', event => {
@@ -207,39 +242,47 @@ document.addEventListener('change', event => {
   else if(target.dataset.prepared)update({prepared:toggle(state.prepared,target.dataset.prepared)});
 });
 $('character-picker').addEventListener('click',()=>openPicker('character'));
+$('main-deck-apply').addEventListener('click',()=>{update({},{force:true});toast('現在の推奨編成をセットしました。');});
+$('refresh-data').addEventListener('click',refreshLiveData);
 $('skill-search').addEventListener('input',e=>{query=e.target.value;renderResults();});
 $('picker-search').addEventListener('input',renderPicker);
 $('show-excluded').addEventListener('change',e=>{showExcluded=e.target.checked;renderResults();});
 $('close-picker').addEventListener('click',()=>$('picker-dialog').close());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());
 for(const id of ['sources-button','footer-sources'])$(id).addEventListener('click',showSources);
-$('help-button').addEventListener('click',()=>openInfo('使い方', '<h3>1. コースと育成条件を選ぶ</h3><p>上の開催予定からコースを選び、育成する衣装・作戦を設定します。</p><h3>2. サポートを6枚選ぶ</h3><p>本育成で使う6枚を選択します。金スキルを優先し、金と引き換えになる白スキル択は本育成の取得経路に含めません。</p><h3>3. 継承・因子の準備を確認する</h3><p>「必要な継承・白因子」で、編成にない白スキルと継承元を確認します。因子名をタップすると、因子周回のキャラ・サポート編成・イベント択・優先スキルを別に設定できます。シナリオ等で取れるものは「別ルートで取得」、不要な加速などは「今回は見送る」に設定できます。</p><h3>4. 保存する</h3><p>準備できたものにチェックし、リストをコピー。複数プランの保存とJSONでの持ち運びもできます。スマートフォンはブラウザーの「ホーム画面に追加」からアプリとして使えます。</p>'));
+$('help-button').addEventListener('click',()=>openInfo('使い方', '<h3>1. コースと育成条件を選ぶ</h3><p>上の開催予定からコースを選び、育成する衣装・作戦を設定します。</p><h3>2. 自動編成を確認する</h3><p>キャラ・脚質・レースを選ぶと推奨編成をセットします。自前の覚醒と併用制限を反映し、6枠目はSSRたづなで固定。各枠は手動変更でき、「推奨に戻す」で再設定できます。金スキルを優先し、金と引き換えになる白スキル択は本育成の取得経路に含めません。</p><h3>3. 継承・因子の準備を確認する</h3><p>「必要な継承・白因子」で、編成にない白スキルと継承元を確認します。因子名をタップすると、因子周回のキャラ・サポート編成・イベント択・優先スキルを別に設定できます。シナリオ等で取れるものは「別ルートで取得」、不要な加速などは「今回は見送る」に設定できます。</p><h3>4. 保存する</h3><p>準備できたものにチェックし、リストをコピー。複数プランの保存とJSONでの持ち運びもできます。スマートフォンはブラウザーの「ホーム画面に追加」からアプリとして使えます。</p>'));
 $('copy-checklist').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(checklistText());toast('チェックリストをコピーしました。');}catch{download('umaplan-checklist.txt',checklistText());toast('コピーできなかったため、テキストで保存しました。');}});
 $('download-checklist').addEventListener('click',()=>download('umaplan-checklist.txt',checklistText()));
 $('save-plan').addEventListener('click',()=>{const char=analysis.index.characters.get(state.characterId);const {plans,...snapshot}=state;const label=`${analysis.course.month}月 ${analysis.course.venue??'未定'} / ${char?.characterName??'キャラ未選択'} / ${state.style}`;update({plans:[{label,state:snapshot},...plans].slice(0,20)});toast('プランを保存しました（最大20件）。');});
 $('export-json').addEventListener('click',()=>download('umaplan-plans.json',JSON.stringify({app:'umaplan',version:2,state},null,2),'application/json'));
 $('import-json').addEventListener('click',()=>$('json-file').click());
-$('json-file').addEventListener('change',async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>3_000_000)throw new Error('large');const raw=JSON.parse(await file.text());if(raw.app!=='umaplan'||![1,2].includes(raw.version)||!raw.state)throw new Error('format');update(raw.state);toast('プランを読み込みました。');}catch{toast('UMAPLANで書き出した有効なJSONを選んでください。');}finally{event.target.value='';}});
+$('json-file').addEventListener('change',async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>3_000_000)throw new Error('large');const raw=JSON.parse(await file.text());if(raw.app!=='umaplan'||![1,2].includes(raw.version)||!raw.state)throw new Error('format');update({...raw.state,mainDeck:{...raw.state.mainDeck,mode:'manual'}},{preserve:true});toast('保存した編成を読み込みました。');}catch{toast('UMAPLANで書き出した有効なJSONを選んでください。');}finally{event.target.value='';}});
 $('reset-plan').addEventListener('click',()=>{update({...structuredClone(DEFAULT_STATE),courseId:state.courseId,plans:state.plans});toast('現在の編成をリセットしました。保存プランは保持しています。');});
-$('sample-button').addEventListener('click',()=>{update({characterId:107601,style:'差し',supports:[30317,30304,30306,30302,30287,30305],eventChoices:{},supplied:[],prepared:[],excluded:[]});toast('操作例を入力しました。イベントの選択予定も設定できます。');});
+$('sample-button').addEventListener('click',()=>{update({characterId:107601,style:'差し',eventChoices:{},supplied:[],prepared:[],excluded:[]},{force:true});toast('操作例を入力しました。イベントの選択予定も設定できます。');});
 for(const id of ['picker-dialog','info-dialog'])$(id).addEventListener('click',event=>{if(event.target===$(id)){const rect=$(id).getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)$(id).close();}});
 
 async function boot() {
+  const startupButtons=[...document.querySelectorAll('button')];
+  startupButtons.forEach(button=>button.disabled=true);
   $('skill-list').innerHTML='<p class="loading">データを読み込んでいます…</p>';
   try {
-    const response=await fetch(new URL('./data/catalog.json',import.meta.url));if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const response=await fetch(new URL('./data/catalog.json',import.meta.url),{cache:'no-store'});if(!response.ok)throw new Error(`HTTP ${response.status}`);
     catalog=await response.json();
+    Object.assign(SOURCES,MAIN_DECK_GUIDE.sources);
+    const live=await loadLiveData(catalog,{storage:liveStorage});
+    if(live.data)applyLiveData(live.data);liveSource=live.source;
     supportUsage=createSupportUsageIndex(catalog);
     let saved;try{saved=JSON.parse(localStorage.getItem(STORE)??'null');}catch{saved=null;}
     state=normalizeState(saved,catalog);
+    state=applyMainDeck(state,catalog,MAIN_DECK_GUIDE);persist();
     factorUI=createFactorUI({catalog,getState:()=>state,update,openPicker});
     lineageUI=createLineageUI({catalog,getState:()=>state,update,openPicker,openFactor:name=>factorUI.open(name)});
     tierUI=createTierUI({catalog,getCourse:()=>analysis.course,getCharacterId:()=>state.characterId,onSelect:(characterId,style)=>{
       const old=state.supports.filter(Boolean).length;
-      update({characterId,style});
+      update({characterId,style},{force:true});
       toast(state.supports.filter(Boolean).length<old?'本育成に選択しました。本人のサポートは編成から外しました。':'本育成のウマ娘と作戦を選択しました。');
     }});
-    $('tier-button').disabled=false;render();
+    startupButtons.forEach(button=>button.disabled=false);render();
     if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
   } catch(error) { $('skill-list').innerHTML='<div class="empty-state"><h3>データを読み込めませんでした</h3><p>接続を確認してページを再読み込みしてください。ローカルで使う場合は、npm startで起動します。</p></div>';console.error(error); }
 }

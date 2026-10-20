@@ -1,4 +1,5 @@
 export const VERIFIED_AT = '2026-10-18';
+export const LIVE_METADATA = {verifiedAt:VERIFIED_AT};
 export const SOURCES = {
   official: { name: 'Cygames｜10月〜3月 対戦レースイベント', url: 'https://dmg.umamusume.jp/news/detail/?id=3483', kind: '公式発表' },
   november: { name: 'ウマ娘ラボ｜2026年11月 京都3000m', url: 'https://umamusumelabo.com/event/loh/loh-kyoto3000-202611', kind: '攻略・評価' },

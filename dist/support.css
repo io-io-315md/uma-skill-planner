@@ -53,3 +53,4 @@
  .support-usage-label{font-size:11px}
  .support-type-badge{width:26px;height:26px}
 }
+.main-deck-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 10px}.main-deck-mode{font-size:11px;font-weight:700;color:#285e4c;background:#eaf3e9;border:1px solid #d5e4d4;border-radius:5px;padding:4px 8px}.main-deck-toolbar button{font-size:10px}.live-data-status{padding:9px 0 13px;display:flex;flex-direction:column;align-items:flex-start;gap:5px;font-size:10px;line-height:1.7;color:var(--muted)}.live-data-status button{font-size:10px}.main-deck-basis{font-size:10px;line-height:1.9;margin:14px 0;color:var(--muted)}.main-deck-basis summary{cursor:pointer;color:#42674b}.main-deck-basis a{display:block;font-size:10px;margin:5px 0;overflow-wrap:anywhere}.main-card-role{font-size:10px;line-height:1.7;color:#42674b;padding:7px 0 0;margin:0;overflow-wrap:anywhere}
