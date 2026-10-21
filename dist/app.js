@@ -7,8 +7,9 @@ import { exportLineagePlan, lineagePlanKey, refreshSavedFarmingPlans } from './l
 import { artwork } from './ui.js';
 import { createTierUI } from './tier-ui.js';
 import { selectSupportCandidates } from './support-picker.js';
+import { matchesCharacterName } from './name-search.js';
 import { createSupportUsageIndex, DISTANCES, RUN_STYLES, targetLabel, skillMatchesRace } from './support-usage.js';
-import { FIXED_SUPPORT_SLOT, RENTAL_SUPPORT_SLOT } from './deck-rules.js';
+import { FIXED_SUPPORT_SLOT } from './deck-rules.js';
 import { MAIN_DECK_GUIDE } from './main-deck-data.js';
 import { applyMainDeck, changeMainConditions } from './main-deck.js';
 import { loadLiveData, applyLiveData } from './live-data.js';
@@ -81,8 +82,8 @@ function renderSetup() {
   $('support-slots').innerHTML=state.supports.map((id,i)=>{
     const support=analysis.index.supports.get(id);
     const goldRoles=support?[...acquisitionRoutes({...state,characterId:null,supports:[id]},analysis.index)].filter(([id,routes])=>analysis.index.skills.get(id)?.rarity===2&&skillMatchesRace(analysis.index.skills.get(id),analysis.course,state.style)&&routes.some(r=>r.kind!=='event-unverified')).map(([id])=>analysis.index.skills.get(id).name):[];
-    const fixed=i===FIXED_SUPPORT_SLOT,tag=fixed?'div':'button',assignment=fixed?'自前・固定':i===RENTAL_SUPPORT_SLOT?'レンタル':'自前';
-    return `<div class="support-slot ${fixed?'fixed-support-slot':''}"><div class="support-slot-main"><span class="slot-number">${String(i+1).padStart(2,'0')}</span><${tag} class="slot-select visual-slot-select" ${fixed?'role="group" aria-label="サポート6：SSRたづな・自前固定"':`data-slot="${i}" aria-label="サポート${i+1}を選択"`}>${support?`${artwork(support)}<span class="slot-copy"><span class="slot-assignment ${fixed?'fixed-assignment':''}">${assignment}</span><span class="slot-title">${escape(support.title)}</span><strong>${escape(support.characterName)}</strong><small>${TYPE_LABELS[support.type]}・${support.rarity}</small></span>`:`<span class="empty-slot-art">＋</span><span><span class="slot-assignment">${assignment}</span><strong class="empty-title">サポートを選択</strong></span>`}</${tag}>${support&&!fixed?`<button class="remove-support" data-remove="${i}" aria-label="サポート${i+1}を外す">×</button>`:''}</div>${goldRoles.length?`<p class="main-card-role">金スキル候補：${goldRoles.map(escape).join(' / ')}</p>`:''}${(support?.events??[]).filter(e=>e.selection==='single').map(event=>{
+    const fixed=i===FIXED_SUPPORT_SLOT,tag=fixed?'div':'button';
+    return `<div class="support-slot ${fixed?'fixed-support-slot':''}"><div class="support-slot-main"><span class="slot-number">${String(i+1).padStart(2,'0')}</span><${tag} class="slot-select visual-slot-select" ${fixed?'role="group" aria-label="サポート6：SSRたづな固定"':`data-slot="${i}" aria-label="サポート${i+1}を選択"`}>${support?`${artwork(support)}<span class="slot-copy">${fixed?'<span class="slot-assignment fixed-assignment">固定</span>':''}<span class="slot-title">${escape(support.title)}</span><strong>${escape(support.characterName)}</strong><small>${TYPE_LABELS[support.type]}・${support.rarity}</small></span>`:`<span class="empty-slot-art">＋</span><span><strong class="empty-title">サポートを選択</strong></span>`}</${tag}>${support&&!fixed?`<button class="remove-support" data-remove="${i}" aria-label="サポート${i+1}を外す">×</button>`:''}</div>${goldRoles.length?`<p class="main-card-role">金スキル候補：${goldRoles.map(escape).join(' / ')}</p>`:''}${(support?.events??[]).filter(e=>e.selection==='single').map(event=>{
       const choices=eventChoicesForPurpose(event,analysis.index,'main');
       const chosen=resolvedEventChoice(event,state,analysis.index,'main');
       const explicit=choices.some(c=>c.id===state.eventChoices[event.id]);
@@ -168,7 +169,7 @@ function openPicker(kind,slot=0,context='main') {
 }
 function renderPicker() {
   const kind = picker.kind;
-  const text = $('picker-search').value.toLowerCase().replace(/[\s\[\]「」]/g,'');
+  const text = $('picker-search').value;
   const profile=picker.context==='lineage'?lineageUI.profile():picker.context==='farming'?factorUI.profile():state;
   const char = analysis.index.characters.get(profile.characterId);
   const mainChar=analysis.index.characters.get(state.characterId);
@@ -177,7 +178,7 @@ function renderPicker() {
   const candidates = kind==='support'
     ? selectSupportCandidates(catalog.supports,{context:picker.context==='main'?'main':'farming',traineeCharacterId:char?.characterId,excludedCharacterIds:selectedChars,type:picker.type,query:text,usageIndex:supportUsage,
       usageFilter:picker.allUsage?null:{distance:picker.distance,style:picker.style,dirtOnly:picker.dirtOnly,surface:picker.dirtOnly?'ダート':analysis.course.surface}})
-    : catalog.characters.filter(c=>(picker.context==='main'||c.characterId!==mainChar?.characterId)&&!lineageExcluded.has(c.characterId)&&c.name.toLowerCase().replace(/[\s\[\]「」]/g,'').includes(text)).sort((a,b)=>a.characterId-b.characterId||a.id-b.id);
+    : catalog.characters.filter(c=>(picker.context==='main'||c.characterId!==mainChar?.characterId)&&!lineageExcluded.has(c.characterId)&&matchesCharacterName(c,text)).sort((a,b)=>a.characterId-b.characterId||a.id-b.id);
   $('picker-results').classList.toggle('character-picker-grid',kind==='character');
   renderUsageFilters(kind==='support'&&picker.context==='main');
   $('picker-filters').innerHTML = kind === 'support' ? ['すべて','speed','stamina','power','guts','wit','friend','group'].map(type => `<button class="category-button ${picker.type === type ? 'active' : ''}" data-picker-type="${type}">${TYPE_LABELS[type] ?? type}</button>`).join('') : '';

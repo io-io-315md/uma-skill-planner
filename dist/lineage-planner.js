@@ -224,7 +224,7 @@ export function exportLineagePlan(plan,analysis,state={}) {
     lines.push(`用意する白因子：${result.assignments[i].map(r=>`[${['','高','中','低'][r.priority]}] ${r.name}`).join(' / ')||'取得ルート・手持ちに応じて追加'}`);
     if(result.inheritedTargets.length)lines.push(`既存因子から引き継ぐ白因子：${result.inheritedTargets.map(r=>`[${['','高','中','低'][r.priority]}] ${r.name}`).join(' / ')}（継承ヒント・白因子化を確認）`);
     lines.push(`指定する赤因子：${red.targets[i].type}（目標★${red.targets[i].stars}・星数は抽選）`,red.targets[i].preparation);
-    lines.push(`因子厳選サポカ：${node.supports.map((id,slot)=>(analysis.index.supports.get(id)?.name??'自由枠')+(slot===5?' [自前・固定]':'')).join(' / ')}`);
+    lines.push(`因子厳選サポカ：${node.supports.map((id,slot)=>(analysis.index.supports.get(id)?.name??'自由枠')+(slot===5?' [固定]':'')).join(' / ')}`);
     for(const id of node.supports){const support=analysis.index.supports.get(id);for(const event of support?.events??[]){const choice=event.choices.find(c=>c.id===node.eventChoices[event.id]);if(choice)lines.push(`  ${support.characterName}の択：${choice.label}`);}}
     if(node.scenario==='ura')lines.push('URAの真髄対決イベントも使用');
   }

@@ -73,7 +73,9 @@ test('SSRたづなを本育成と因子周回の6枠目に固定し、周回の�
   const farming=normalizeFarmingProfile({supports:[30289]},catalog);assert.equal(farming.supports[5],FIXED_SUPPORT_ID);
   assert.equal(farming.supports.filter(id=>id===FIXED_SUPPORT_ID).length,1);
   const text=exportChecklist(swapped,analyze(swapped,catalog));
-  assert.match(text,/5\. .*\[レンタル\]/);assert.match(text,/6\. .*駿川たづな \[自前・固定\]/);
+  assert.match(text,/6\. .*駿川たづな \[固定\]/);
+  const deck=text.split('サポート編成\n')[1].split('\n\n')[0];
+  assert.doesNotMatch(deck,/自前|レンタル/);
 });
 
 test('サポカ7種類のゲーム内アイコンを画像右上用に添付し、キャラの顔アイコンには付けない',()=>{

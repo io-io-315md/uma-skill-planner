@@ -21,7 +21,7 @@ test('本育成はSSRのみ、因子周回はSSR・SR・Rを実装日が新し�
 
 test('検索と種類フィルターでもレアリティ・併用制限・実装順を維持し、原本を並べ替えない',()=>{
   const before=catalog.supports.map(s=>s.id);
-  const results=selectSupportCandidates(catalog.supports,{context:'farming',type:'power',query:'ファイン',excludedCharacterIds:new Set([1001]),traineeCharacterId:1068});
+  const results=selectSupportCandidates(catalog.supports,{context:'farming',type:'power',query:'ふぁいん',excludedCharacterIds:new Set([1001]),traineeCharacterId:1068});
   assert.ok(results.length>0&&results.every(s=>s.type==='power'&&s.name.includes('ファイン')));
   assert.ok(results.every(s=>s.characterId!==1001&&s.characterId!==1068));
   const main=selectSupportCandidates(catalog.supports,{type:'wit',query:'ナリタ',excludedCharacterIds:new Set([1016])});
