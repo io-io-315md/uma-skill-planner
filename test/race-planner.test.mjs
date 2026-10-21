@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {normalizeState,normalizeFarmingProfile,analyze} from '../dist/engine.js';
 import {suggestLineagePlan} from '../dist/lineage-planner.js';
 import {RACE_DATA} from '../dist/race-data.js';
-import {starsToRank,canRaceWithPreparation,commonG1Bonus,planLineageRotations,normalizeGoalChoices,exportRotation,goalGroups} from '../dist/race-planner.js';
+import {starsToRank,canRaceWithPreparation,commonG1Bonus,planLineageRotations,normalizeGoalChoices,exportRotation,goalGroups,minimumRaceFans} from '../dist/race-planner.js';
 import {preparationHTML,rotationPopupHTML} from '../dist/race-ui.js';
 
 const catalog=JSON.parse(fs.readFileSync(new URL('../dist/data/catalog.json',import.meta.url)));
@@ -54,12 +54,32 @@ test('目標レースと任意予約を分け、同一ターンの二重予約�
     for(const row of rotation.rows){
       if(row.mode==='reserve'){
         assert.equal(canRaceWithPreparation(row,rotation.preparation),true);
-        assert.ok(rotation.rows.filter(r=>r.turn<row.turn&&r.canWin).reduce((n,r)=>n+r.fansGained,0)>=row.fansNeeded);
+        assert.ok(rotation.rows.filter(r=>r.turn<row.turn&&r.canWin).reduce((n,r)=>n+minimumRaceFans(r),0)>=row.fansNeeded);
       }
       if(row.streak>=3)triple=true;
     }
   }
   assert.equal(triple,true,'3戦目を機械的に休みにしない');
+});
+
+test('デビュー1着で1,000人を確保し、ジュニアGⅠ前のファン補填GⅡを予約しない',()=>{
+  const debut=RACE_DATA.goals[1008][0].races[0];
+  assert.equal(debut.fansGained,700,'元データはボーナス抜きの基礎値を保持');
+  assert.equal(minimumRaceFans(debut),1001);
+  const juniorG1=RACE_DATA.races.filter(r=>r.turn<=24&&r.grade===100);
+  assert.equal(juniorG1.length,4);
+  for(const race of juniorG1)assert.ok(minimumRaceFans(debut)>=race.fansNeeded,race.name);
+  for(const rotation of result.rotations){
+    assert.ok(rotation.rows.some(r=>r.turn>=23&&r.turn<=24&&r.grade===100),rotation.character.name);
+    assert.ok(!rotation.rows.some(r=>r.turn>12&&r.turn<23&&r.mode==='reserve'&&r.purpose==='出走に必要なファン数を確保'),rotation.character.name);
+    assert.doesNotMatch(rotationPopupHTML(rotation,'親'),/ファンボーナスを加算せず/);
+  }
+});
+
+test('ファン補填が不要になってもキャラ固有のGⅡ育成目標は残す',()=>{
+  const mandatory=result.rotations.flatMap(rotation=>rotation.goals.filter(g=>g.type===1&&g.races[0]?.grade===200).map(goal=>({rotation,goal})));
+  assert.ok(mandatory.length>0);
+  for(const {rotation,goal}of mandatory)assert.ok(rotation.rows.some(r=>r.turn===goal.turn&&r.key===goal.races[0].key&&r.mode!=='reserve'),rotation.character.name+' '+goal.races[0].name);
 });
 
 test('ボーナスは正しい5組の共通GⅠだけで計算し、同じGⅠの複数年勝利を重ねない',()=>{

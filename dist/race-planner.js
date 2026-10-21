@@ -4,12 +4,17 @@ import {RED_FACTORS,redAptitude,projectedAptitude,analyzeRedPlan} from './factor
 const RANKS=['G','F','E','D','C','B','A','S'];
 const TYPES=['芝','ダート','短距離','マイル','中距離','長距離'];
 export const COMPATIBILITY_PAIRS=[[0,1],[0,2],[0,3],[1,4],[1,5]];
+// 周回はデビュー1着で1,000人以上になる編成を前提とする。凸数を入力しないため、
+// 各サポカの実値を仮定せず、その条件を満たす下限の合計ファンボーナスで判定する。
+export const ROTATION_MIN_FAN_BONUS=43;
+export const minimumRaceFans=race=>Math.floor(race.fansGained*(100+ROTATION_MIN_FAN_BONUS)/100);
 export const ROTATION_SOURCES=[
   {name:'GameTora：キャラ別目標・レース日程',url:RACE_DATA.sources.calendar,date:RACE_DATA.verifiedAt},
   {name:'20マンモス：因子の掘り方と周回ローテ',url:'https://note.com/200000is/n/nc60b4a56195a',date:'2025-04-15'},
   {name:'ml’p：因子周回・共通GⅠボーナス',url:'https://note.com/mlp_229/n/n3688b3add40c',date:'2026-08-26'},
   {name:'dai：自主トレ周回と目標・適性の違い',url:'https://note.com/light_bear2389/n/n84ceacf1568d',date:'2026-09-21'},
   {name:'れい：トレセン軒の因子周回',url:'https://note.com/umamusume_sui/n/n7eb1445f0c07',date:'2026-07-02'},
+  {name:'しちみ：ファン数ボーナスの合算とデビュー1,000人の条件',url:'https://note.com/mekabu1672/n/nb332b7447f1e',date:'2021-05-10'},
   {name:'U-tools：共通GⅠの5組と重複勝利の扱い',url:'https://xn--gck1f423k.xn--1bvt37a.tools/announcements/5',date:'2023-03-06'},
   {name:'公式：相性ボーナス詳細の表示',url:'https://umamusume.jp/news/detail/?id=3395',date:'2026-08-24'}
 ];
@@ -142,7 +147,7 @@ function scheduleG1(goals,preparation,weights){
 
 function completeRequirements(rows,goals,preparation){
   const result=[...rows];
-  const fansBefore=turn=>result.filter(r=>r.turn<turn&&r.canWin).reduce((sum,r)=>sum+r.fansGained,0);
+  const fansBefore=turn=>result.filter(r=>r.turn<turn&&r.canWin).reduce((sum,r)=>sum+minimumRaceFans(r),0);
   function insert(before,after,predicate,reason){
     const occupied=new Set(result.map(r=>r.turn));
     const options=RACE_DATA.races.filter(r=>r.turn<before&&r.turn>after&&!occupied.has(r.turn)&&canRaceWithPreparation(r,preparation)&&r.fansNeeded<=fansBefore(r.turn)&&predicate(r));
@@ -160,7 +165,7 @@ function completeRequirements(rows,goals,preparation){
     for(let i=0;i<goals.length;i++){
       const goal=goals[i],previous=goals[i-1]?.turn??12;
       if(goal.type===3){
-        const total=result.filter(r=>r.turn<=goal.turn&&r.canWin).reduce((n,r)=>n+r.fansGained,0);
+        const total=result.filter(r=>r.turn<=goal.turn&&r.canWin).reduce((n,r)=>n+minimumRaceFans(r),0);
         if(total<goal.position&&insert(goal.turn+1,12,()=>true,'ファン数の育成目標を達成')){changed=true;break;}
       }else if(goal.type===2){
         const count=result.filter(r=>r.turn>previous&&r.turn<=goal.turn&&r.canWin&&r.grade<=goal.grade).length;
@@ -177,7 +182,7 @@ function completeRequirements(rows,goals,preparation){
   }
   for(let i=0;i<goals.length;i++){
     const g=goals[i],previous=goals[i-1]?.turn??12;
-    if(g.type===3&&result.filter(r=>r.turn<=g.turn&&r.canWin).reduce((n,r)=>n+r.fansGained,0)<g.position)issues.push(`${raceDateLabel(g.turn)}までにファン${g.position.toLocaleString()}人が必要`);
+    if(g.type===3&&result.filter(r=>r.turn<=g.turn&&r.canWin).reduce((n,r)=>n+minimumRaceFans(r),0)<g.position)issues.push(`${raceDateLabel(g.turn)}までにファン${g.position.toLocaleString()}人が必要`);
     if(g.type===2&&result.filter(r=>r.turn>previous&&r.turn<=g.turn&&r.canWin&&r.grade<=g.grade).length<g.count)issues.push(`${raceDateLabel(g.turn)}までの${gradeLabel(g.grade)}以上${g.count}回の目標に不足`);
   }
   let previous=0,streak=0;
@@ -228,5 +233,6 @@ export function exportRotation(rotation){
   const prep=rotation.preparation,format=factors=>Object.entries(sumFactors(factors)).map(([type,stars])=>`${type}★${stars}`).join('・');
   return [`${rotation.character?.name??'未選択'}｜おすすめローテ`,prep?`育成に使う赤因子：親 ${format(prep.parents)} / 祖父母 ${format(prep.grandparents)} / 合計 ${format(prep.factors)}`:'',
     ...rotation.rows.map(r=>`${raceDateLabel(r.turn)}｜${r.name}｜${r.mode==='reserve'?'予約':r.mode==='branch'?'目標分岐で選択・予約不要':r.mode==='random'?'抽選目標・予約不要':r.mode==='conditional'?'条件目標・なければ予約':r.mode==='conditional-branch'?'条件で変わる目標・予約不要':'育成目標・予約不要'}${r.purpose?' / '+r.purpose:''}`),
+    'ファン数は合計ファン数ボーナス43%以上・デビュー1着で1,000人以上になる編成を前提に判定。',
     '記載したGⅠは1着を揃える計画。勝利実績・予約のゲーム内反映は手動。',...rotation.issues].filter(Boolean).join('\n');
 }

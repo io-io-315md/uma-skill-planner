@@ -1,6 +1,6 @@
 {
   "name": "uma-skill-planner",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
   "type": "module",
   "description": "ウマ娘のコース別スキル・継承・白因子プランナー",
