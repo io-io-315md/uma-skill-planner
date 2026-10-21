@@ -16,6 +16,7 @@ export function normalizeFarmingProfile(raw, catalog) {
     characterId:char?.id??null,
     supports:normalizeFarmingSupports(profile.supports,catalog,char?.characterId),
     redFactor:RED_FACTORS.includes(profile.redFactor?.type)?{type:profile.redFactor.type,stars:[1,2,3].includes(profile.redFactor.stars)?profile.redFactor.stars:3}:null,
+    raceGoalChoices:profile.raceGoalChoices&&typeof profile.raceGoalChoices==='object'&&!Array.isArray(profile.raceGoalChoices)?Object.fromEntries(Object.entries(profile.raceGoalChoices).filter(([key,value])=>/^\d{1,2}$/.test(key)&&Number.isInteger(value)&&value>=0&&value<10)):{},
     eventChoices:profile.eventChoices&&typeof profile.eventChoices==='object'&&!Array.isArray(profile.eventChoices)?Object.fromEntries(Object.entries(profile.eventChoices).filter(([k,v])=>k.startsWith('evt_')&&typeof v==='string')):{},
     learned:Array.isArray(profile.learned)?[...new Set(profile.learned.filter(s=>typeof s==='string'))]:[],
     anchorSupportId:catalog.supports.some(s=>s.id===Number(profile.anchorSupportId))?Number(profile.anchorSupportId):null,

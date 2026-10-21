@@ -4,13 +4,15 @@ import { artwork, escape, inheritedFactorSection } from './ui.js';
 import { FARMING_POLICY } from './farming-policy.js';
 import { RED_FACTORS, analyzeRedPlan } from './factor-targets.js';
 import { FIXED_SUPPORT_SLOT } from './deck-rules.js';
+import { planLineageRotations, exportRotation, normalizeGoalChoices, ROTATION_SOURCES } from './race-planner.js';
+import { preparationHTML, rotationPopupHTML } from './race-ui.js';
 
 const $=id=>document.getElementById(id);
 const priority=row=>`<span class="priority priority-${row.priority}">${PRIORITIES[row.priority]}</span>`;
 const chips=rows=>rows.map(r=>`<span class="lineage-skill-chip">${priority(r)}${escape(r.name)}</span>`).join('');
 
 export function createLineageUI({catalog,getState,update,openPicker,openFactor}) {
-  let active=0;
+  let active=0,rotationNode=0;
   const context=()=>{const state=getState();return {state,analysis:analyze(state,catalog),key:lineagePlanKey(state)};};
   const current=()=>{const {state,key}=context();return state.lineagePlans[key];};
   const save=(plan,manual=true)=>{const {state,key}=context();update({lineagePlans:{...state.lineagePlans,[key]:normalizeLineagePlan({...plan,manual},catalog,state.characterId)}});};
@@ -20,19 +22,20 @@ export function createLineageUI({catalog,getState,update,openPicker,openFactor})
   function render() {
     if($('lineage-overview').hidden)return;
     const {state,analysis}=context(),container=$('lineage-overview');
-    if(!analysis.course.confirmed||!state.characterId){container.innerHTML=`<div class="empty-state"><h3>${analysis.course.confirmed?'本育成のウマ娘と編成を選択':'コース詳細未発表'}</h3><p>${analysis.course.confirmed?'不足する白因子と継承候補から、親・祖父母と因子厳選用の編成を提案します。':'コース確定後に因子編成の提案を表示します。'}</p></div>`;return;}
+    if(!analysis.course.confirmed||!state.characterId){$('lineage-footer-notes').innerHTML='';container.innerHTML=`<div class="empty-state"><h3>${analysis.course.confirmed?'本育成のウマ娘と編成を選択':'コース詳細未発表'}</h3><p>${analysis.course.confirmed?'不足する白因子と継承候補から、親・祖父母と因子厳選用の編成を提案します。':'コース確定後に因子編成の提案を表示します。'}</p></div>`;return;}
     const plan=current(),signature=lineageSignature(state,analysis);
     if(!plan||(!plan.manual&&plan.signature!==signature)){rebuild();return;}
     if(plan.nodes.some(node=>node.farmingPolicy!==FARMING_POLICY)){save(refreshLineagePolicy(plan,analysis,catalog),plan.manual);return;}
     const result=analyzeLineagePlan(plan,analysis),main=analysis.index.characters.get(state.characterId);
     const red=analyzeRedPlan(state,analysis,plan);
+    const rotations=planLineageRotations(state,analysis,plan);
     const high=result.targets.filter(r=>r.priority===1),highCovered=result.covered.filter(r=>r.priority===1);
     const parent=analysis.index.characters.get(plan.nodes[active].characterId),meta=LINEAGE_NODES[active];
     const friend=analysis.index.characters.get(plan.nodes[plan.friendSide].characterId);
     const unplaced=result.inheritance.filter(r=>r.placement==='unplaced'||r.evolvedInheritance&&!r.evolutionPossible);
     container.innerHTML=`
       <section class="lineage-overview-card" aria-labelledby="lineage-heading">
-        <div class="lineage-heading"><div><p class="eyebrow">FACTOR PLAN</p><h3 id="lineage-heading">親・祖父母と白因子の編成案</h3></div><button class="outline-button" data-lineage-rebuild>不足に合わせて再提案</button></div>
+        <div class="lineage-heading"><h3 id="lineage-heading">因子ツリー</h3><button class="outline-button" data-lineage-rebuild>不足に合わせて再提案</button></div>
         <p class="lineage-caption">不足する白因子を優先度「高」からカバー。各個体のサポカ・赤因子は下の一覧に表示し、ウマを押すとイベント択・習得スキルまで編集できます。</p>
         <p class="lineage-scenario-note">全個体で新SSRたづなを6枠目に固定し、残り5枚をSSR・SR・Rから提案。トレセン軒のシナリオ効果を考慮した条件です。URAではシナリオ特効の必須枠ではありませんが、今回の提案は同じ1枠確保の条件で統一しています。<a href="https://www.4gamer.net/games/414/G041434/20260615028/" target="_blank" rel="noopener noreferrer">たづなの効果 ↗</a></p>
         ${plan.signature!==signature?'<div class="lineage-update-note" role="status">本育成または提案の条件が更新されました。たづな固定を適用したうえで手動調整を保持し、現在の不足スキルで再判定しています。「不足に合わせて再提案」で残り5枚を更新できます。</div>':''}
@@ -43,12 +46,12 @@ export function createLineageUI({catalog,getState,update,openPicker,openFactor})
           <div class="lineage-trainee">${artwork(main)}<div><small>本育成 / ${escape(state.style)}</small><strong>${escape(main.name)}</strong></div></div>
           <div class="lineage-branches">${[0,1].map(side=>{
             const [p,g1,g2]=branchIndices(side),borrowed=side===plan.friendSide;
-            return `<section class="lineage-branch ${borrowed?'friend-branch':''}" aria-label="${borrowed?'フレンド側':'自前側'}の親と祖父母"><div class="lineage-branch-label"><span>${borrowed?'フレンドから借りる':'自分で用意する'}</span><label><input type="radio" name="lineage-friend" value="${side}" data-lineage-friend ${borrowed?'checked':''}> この親を借りる</label></div>${renderNode(p,plan,result,red)}<div class="lineage-grandparents">${renderNode(g1,plan,result,red)}${renderNode(g2,plan,result,red)}</div></section>`;
+            return `<section class="lineage-branch ${borrowed?'friend-branch':''}" aria-label="${borrowed?'フレンド側':'自前側'}の親と祖父母"><div class="lineage-branch-label"><span>${borrowed?'フレンドから借りる':'自分で用意する'}</span><label><input type="radio" name="lineage-friend" value="${side}" data-lineage-friend ${borrowed?'checked':''}> この親を借りる</label></div>${renderNode(p,plan,result,red,rotations.rotations[p])}<div class="lineage-grandparents">${renderNode(g1,plan,result,red,rotations.rotations[g1])}${renderNode(g2,plan,result,red,rotations.rotations[g2])}</div></section>`;
           }).join('')}</div>
         </div>
         <p class="lineage-caption">親の固有は育成開始時にヒントを受け取れます。祖父母の固有は育成中の継承抽選。継承進化を狙う衣装は直接親に置き、レンタルでも本人の所持が必要です。固有因子用のキャラは★3以上で用意してください。</p>
         ${unplaced.length?`<details class="lineage-alternatives"><summary>ツリー外・直接親への変更が必要な継承候補 ${unplaced.length}件</summary><div>${unplaced.map(r=>`<p>${priority(r)}<strong>${escape(r.name)}</strong><span>${escape(r.ownerName)}${r.evolvedInheritance?' / 継承進化には直接親が必要':''}</span><button class="text-button" data-lineage-factor="${escape(r.name)}">取得条件を見る ↗</button></p>`).join('')}</div></details>`:''}
-        <div class="lineage-footer-actions"><button class="text-button" data-lineage-reset-tree>親・祖父母も選び直す</button><details><summary>提案の基準・継承ルール</summary><p>継承進化の候補を直接親に優先配置。サポカで補えない白因子を自前で取れるウマも祖父母に含め、残りに固有候補を優先度順で配置します。白因子の担当は取得ルートを見て分散し、高は両親にも重ねる方針です。相性・共通勝利レースは未評価です。</p><p>サポカはSSR・SR・Rすべてが対象。高→中→低の順に取得経路の種類を増やす探索で、6枚の最適解を保証するものではありません。所持・凸数・レースボーナス・育成性能は未評価。経路が増えない枠は自由枠にしています。</p><a href="https://kamigame.jp/umamusume/page/154134787475434233.html" target="_blank" rel="noopener noreferrer">親・祖父母の固有／白因子の仕様 ↗</a><a href="https://kamigame.jp/umamusume/page/379386472786060081.html" target="_blank" rel="noopener noreferrer">継承進化の条件 ↗</a><a href="https://umamusumelabo.com/event/loh/loh-kyoto3000-202611" target="_blank" rel="noopener noreferrer">京都3000mの継承候補・継承進化 ↗</a></details></div>
+        <div class="lineage-footer-actions"><button class="text-button" data-lineage-reset-tree>親・祖父母も選び直す</button><details><summary>提案の基準・継承ルール</summary><p>継承進化の候補を直接親に優先配置。サポカで補えない白因子を自前で取れるウマも祖父母に含め、残りに固有候補を優先度順で配置します。白因子の担当は取得ルートを見て分散し、高は両親にも重ねる方針です。キャラ固有の相性は未評価。共通GⅠはおすすめローテで判定します。</p><p>サポカはSSR・SR・Rすべてが対象。高→中→低の順に取得経路の種類を増やす探索で、6枚の最適解を保証するものではありません。所持・凸数・レースボーナス・育成性能は未評価。経路が増えない枠は自由枠にしています。</p><a href="https://kamigame.jp/umamusume/page/154134787475434233.html" target="_blank" rel="noopener noreferrer">親・祖父母の固有／白因子の仕様 ↗</a><a href="https://kamigame.jp/umamusume/page/379386472786060081.html" target="_blank" rel="noopener noreferrer">継承進化の条件 ↗</a><a href="https://umamusumelabo.com/event/loh/loh-kyoto3000-202611" target="_blank" rel="noopener noreferrer">京都3000mの継承候補・継承進化 ↗</a></details></div>
       </section>
       ${renderIndividuals(plan,analysis,result,red)}
       <section class="lineage-friend-card" aria-labelledby="lineage-friend-title"><div class="lineage-heading"><h3 id="lineage-friend-title">フレンドで探す因子</h3><span class="lineage-friend-tag">${LINEAGE_NODES[plan.friendSide].label}をレンタル</span></div><div class="lineage-friend-owner">${artwork(friend)}<div><strong>${escape(friend?.name??'親を選択')}</strong><p>${escape(result.inheritance.find(r=>r.node===plan.friendSide)?.name??'固有はカードの取得元で確認')}${result.inheritance.some(r=>r.node===plan.friendSide&&r.evolvedInheritance)?' / 継承進化には対象衣装の本人所持が必要（所持状況は未確認）':''}</p></div></div>
@@ -72,10 +75,30 @@ export function createLineageUI({catalog,getState,update,openPicker,openFactor})
         ${result.results[active].missing.length?`<details class="lineage-missing"><summary>この周回に取得元がない白因子 ${result.results[active].missing.length}件</summary><div>${result.results[active].missing.map(r=>`<button data-lineage-factor="${escape(r.name)}">${priority(r)}<span>${escape(r.name)}</span><small>${r.uncertainRoutes.length?'未確認イベント候補あり':'別の取得元を見る'} ↗</small></button>`).join('')}</div></details>`:''}
       </section>
       ${result.missing.length?`<section class="lineage-uncovered"><h3>6人の編成でも別の取得元が必要</h3><p class="lineage-caption">サポカの差し替え・シナリオ・既存の因子から補う候補です。各因子を押すと個別の周回案を確認できます。</p><div class="lineage-chips">${result.missing.map(r=>`<button class="lineage-skill-chip" data-lineage-factor="${escape(r.name)}">${priority(r)}${escape(r.name)} ↗</button>`).join('')}</div></section>`:''}`;
+    moveNotesToFooter(container,rotations);
+    if($('rotation-dialog').open)renderRotation();
   }
-  function renderNode(i,plan,result,red){
+  function renderNode(i,plan,result,red,rotation){
     const node=plan.nodes[i],meta=LINEAGE_NODES[i],character=catalog.characters.find(c=>c.id===node.characterId),unique=result.inheritance.find(r=>r.node===i),assigned=result.assignments[i];
-    return `<button class="lineage-node ${active===i?'selected':''}" data-lineage-node="${i}" aria-pressed="${active===i}" aria-label="${meta.label} ${escape(character?.name??'未指定')}の周回編成を見る"><span class="lineage-node-role">${meta.label}${unique?.evolutionPossible?' <b>継承進化</b>':''}${node.scenario==='ura'?' <b>URA</b>':''}</span><span class="lineage-node-character">${artwork(character)}<span><small>${escape(character?.title??'')}</small><strong>${escape(character?.characterName??'ウマ未指定')}</strong></span></span><span class="lineage-node-unique">${escape(unique?.name??'白因子の取得用')}${unique?.evolvedInheritance&&!unique.evolutionPossible?'（祖父母では進化不可）':''}</span><span class="lineage-node-red">赤：${red.targets[i].type} 目標★${red.targets[i].stars}</span><span class="lineage-node-factors">${assigned.slice(0,2).map(r=>`${PRIORITIES[r.priority]}：${escape(r.name)}`).join('<br>')||'担当の白因子なし'}${assigned.length>2?`<small>ほか${assigned.length-2}種</small>`:''}</span><span class="lineage-node-action">編成・因子を見る <span>↗</span></span></button>`;
+    return `<article class="lineage-node ${active===i?'selected':''}"><button class="lineage-node-select" data-lineage-node="${i}" aria-pressed="${active===i}" aria-label="${meta.label} ${escape(character?.name??'未指定')}の周回編成を見る"><span class="lineage-node-role">${meta.label}${unique?.evolutionPossible?' <b>継承進化</b>':''}${node.scenario==='ura'?' <b>URA</b>':''}</span><span class="lineage-node-character">${artwork(character)}<span><small>${escape(character?.title??'')}</small><strong>${escape(character?.characterName??'ウマ未指定')}</strong></span></span><span class="lineage-node-unique">${escape(unique?.name??'白因子の取得用')}${unique?.evolvedInheritance&&!unique.evolutionPossible?'（祖父母では進化不可）':''}</span><span class="lineage-node-red">完成時の赤：${red.targets[i].type} ★${red.targets[i].stars}</span><span class="lineage-node-factors">${assigned.slice(0,2).map(r=>`${PRIORITIES[r.priority]}：${escape(r.name)}`).join('<br>')||'白因子は別の個体で担当'}</span><span class="lineage-node-action">編成・因子を見る <span>↗</span></span></button>${preparationHTML(rotation.preparation)}<button class="rotation-open-button" data-lineage-rotation="${i}" aria-label="${meta.label} ${escape(character?.characterName??'未指定')}のおすすめローテ">おすすめローテ ↗</button></article>`;
+  }
+  function moveNotesToFooter(container,rotations){
+    const footer=$('lineage-footer-notes');footer.innerHTML='';
+    const selectors=['.lineage-caption','.lineage-scenario-note','.lineage-metrics','.lineage-overview-card > .lineage-update-note','.lineage-overview-card > .inherited-factor-note','.lineage-footer-actions > details','.lineage-red-sources','.individual-red-guide','.lineage-skill-heading > span'];
+    for(const element of container.querySelectorAll(selectors.join(','))){
+      if(element.classList.contains('individual-red-guide')){const name=element.closest('.lineage-individual')?.querySelector('.lineage-individual-character strong')?.textContent;const summary=element.querySelector('summary');summary.textContent=name+'：'+summary.textContent;}
+      footer.append(element);
+    }
+    for(const element of container.querySelectorAll('.lineage-individual-count'))element.remove();
+    const compatibility=document.createElement('section');compatibility.className='rotation-compatibility';
+    compatibility.innerHTML=`<h4>共通GⅠボーナスの計画（予定を全勝した場合）</h4><p>+${rotations.total}。ウマ娘固有の相性・トレーナーアビリティは加算していません。</p>${rotations.pairs.map(p=>`<p>${LINEAGE_NODES[p.a].label} × ${LINEAGE_NODES[p.b].label}：共通${p.common.length}種類 / +${p.bonus}</p>`).join('')}<p>GⅠは同じレースを複数回勝っても1種類として数えます。5組の共通勝利を増やす探索で、全組合せに対する最適解を保証するものではありません。フレンド側も、表示したローテの勝利実績がある個体を探すための条件です。</p>${ROTATION_SOURCES.map(s=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer">${escape(s.name)}（${s.date}） ↗</a>`).join('')}`;
+    footer.append(compatibility);
+  }
+  function renderRotation(){
+    const {state,analysis}=context(),plan=current();if(!plan)return;
+    const result=planLineageRotations(state,analysis,plan);
+    $('rotation-title').textContent=LINEAGE_NODES[rotationNode].label+'のおすすめローテ';
+    $('rotation-content').innerHTML=rotationPopupHTML(result.rotations[rotationNode],LINEAGE_NODES[rotationNode].label);
   }
   function renderIndividuals(plan,analysis,result,red){
     return `<section class="lineage-individuals" id="lineage-individuals" aria-labelledby="individuals-title"><div class="lineage-heading"><h3 id="individuals-title">個体ごとのサポカ・赤因子</h3><span>親2人・祖父母4人</span></div><p class="lineage-caption">完成時の赤因子はレース距離を基本にし、本育成の脚質・バ場の適性補正が必要なら配分します。★は厳選目標で、確定指定ではありません。下の開始時適性は6人が目標通りに揃った場合の計算です。</p><div class="lineage-red-totals">${Object.entries(red.totals).map(([type,stars])=>`<span>${type} 合計★${stars}</span>`).join('')}</div><div class="lineage-initial-aptitudes">${red.initial.map(r=>`<span class="${r.ready?'':'aptitude-shortfall'}">本育成の${r.type}：初期${r.rank??'不明'} ／ 開始時${r.projected??'不明'}</span>`).join('')}</div>${red.warnings.map(w=>`<p class="lineage-update-note">${escape(w)}</p>`).join('')}<div class="lineage-individual-grid">${plan.nodes.map((node,i)=>{
@@ -102,7 +125,8 @@ export function createLineageUI({catalog,getState,update,openPicker,openFactor})
   function excludedCharacters(){const {analysis}=context();return new Set((current()?.nodes??[]).filter((_,i)=>i!==active).map(n=>analysis.index.characters.get(n.characterId)?.characterId));}
   $('lineage-overview').addEventListener('click',event=>{
     const button=event.target.closest('button');if(!button)return;const d=button.dataset;
-    if(d.lineageNode!==undefined){active=Number(d.lineageNode);render();$('lineage-active').scrollIntoView({behavior:'smooth',block:'start'});}
+    if(d.lineageRotation!==undefined){rotationNode=Number(d.lineageRotation);renderRotation();$('rotation-dialog').showModal();}
+    else if(d.lineageNode!==undefined){active=Number(d.lineageNode);render();$('lineage-active').scrollIntoView({behavior:'smooth',block:'start'});}
     else if(d.lineageEdit!==undefined){active=Number(d.lineageEdit);render();$('lineage-active').scrollIntoView({behavior:'smooth',block:'start'});}
     else if(d.lineageRebuild!==undefined)rebuild();
     else if(d.lineageResetTree!==undefined)rebuild(true);
@@ -110,6 +134,19 @@ export function createLineageUI({catalog,getState,update,openPicker,openFactor})
     else if(d.lineageSlot!==undefined)openPicker('support',Number(d.lineageSlot),'lineage');
     else if(d.lineageRemove!==undefined&&Number(d.lineageRemove)!==FIXED_SUPPORT_SLOT){const value=profile(),supports=[...value.supports];supports[Number(d.lineageRemove)]=null;saveProfile({...value,supports});}
     else if(d.lineageFactor)openFactor(d.lineageFactor);
+  });
+  $('close-rotation').addEventListener('click',()=>$('rotation-dialog').close());
+  $('rotation-dialog').addEventListener('change',event=>{
+    const order=event.target.dataset.rotationGoal;if(order===undefined)return;
+    const plan=current(),node=plan.nodes[rotationNode],character=catalog.characters.find(c=>c.id===node.characterId);
+    const choices={...node.raceGoalChoices,[order]:Number(event.target.value)};
+    if(character?.characterId===1005&&order==='6')delete choices['5'];
+    const nodes=[...plan.nodes];nodes[rotationNode]={...node,raceGoalChoices:normalizeGoalChoices(character,choices)};save({...plan,nodes});
+  });
+  $('rotation-dialog').addEventListener('click',async event=>{
+    const button=event.target.closest('[data-rotation-copy]');if(!button)return;
+    const {state,analysis}=context(),result=planLineageRotations(state,analysis,current());
+    try{await navigator.clipboard.writeText(exportRotation(result.rotations[rotationNode]));button.textContent='コピーしました';}catch{button.textContent='コピーできませんでした';}
   });
   $('lineage-overview').addEventListener('change',event=>{
     const target=event.target,d=target.dataset,value=profile();

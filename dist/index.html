@@ -8,13 +8,14 @@
   <title>UMAPLAN｜コース別スキル・因子プランナー</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./style.css?v=1.8.1">
-  <link rel="stylesheet" href="./layout.css?v=1.8.1">
-  <link rel="stylesheet" href="./factor.css?v=1.8.1">
-  <link rel="stylesheet" href="./tier.css?v=1.8.1">
-  <link rel="stylesheet" href="./support.css?v=1.8.1">
-  <link rel="stylesheet" href="./lineage.css?v=1.8.1">
-  <script type="module" src="./app.js?v=1.8.1"></script>
+  <link rel="stylesheet" href="./style.css?v=1.9.0">
+  <link rel="stylesheet" href="./layout.css?v=1.9.0">
+  <link rel="stylesheet" href="./factor.css?v=1.9.0">
+  <link rel="stylesheet" href="./tier.css?v=1.9.0">
+  <link rel="stylesheet" href="./support.css?v=1.9.0">
+  <link rel="stylesheet" href="./lineage.css?v=1.9.0">
+  <link rel="stylesheet" href="./race.css?v=1.9.0">
+  <script type="module" src="./app.js?v=1.9.0"></script>
 </head>
 <body>
   <a class="skip-link" href="#results">取得候補へ移動</a>
@@ -39,18 +40,14 @@
       </aside>
       <section class="results-column" id="results" aria-labelledby="results-title">
         <div class="results-heading"><h2 id="results-title">必要な継承・白因子</h2><button id="copy-checklist" class="primary-button"><span aria-hidden="true">▤</span> リストをコピー</button></div>
-        <div class="stats-grid" id="stats"></div>
-        <div class="results-notice" id="results-notice"></div>
-        <div class="results-toolbar"><div class="result-tabs" role="tablist" aria-label="結果の表示"><button class="active" role="tab" aria-selected="true" id="factor-tab" data-view="factor" aria-controls="skill-results-body">継承・白因子 <span id="todo-count"></span></button><button role="tab" aria-selected="false" id="all-tab" data-view="all" aria-controls="skill-results-body">本育成のスキル</button><button role="tab" aria-selected="false" id="lineage-tab" data-view="lineage" aria-controls="lineage-overview">因子厳選用サポカ編成</button></div><button class="text-button" id="download-checklist" aria-label="チェックリストをテキスト保存">↓ TXT</button></div>
-        <div id="course-factor-summary" class="course-factor-summary"></div>
-        <p id="factor-view-note" class="factor-view-note">因子名をタップすると、因子周回の編成・イベント択・優先スキルを表示。継承固有は候補で、直接親は2人までです。</p>
+        <div class="results-toolbar"><div class="result-tabs" role="tablist" aria-label="結果の表示"><button class="active" role="tab" aria-selected="true" id="factor-tab" data-view="factor" aria-controls="skill-results-body">継承・白因子</button><button role="tab" aria-selected="false" id="all-tab" data-view="all" aria-controls="skill-results-body">本育成のスキル</button><button role="tab" aria-selected="false" id="lineage-tab" data-view="lineage" aria-controls="lineage-overview">因子厳選</button></div><button class="text-button" id="download-checklist" aria-label="チェックリストをテキスト保存">↓ TXT</button></div>
         <div id="skill-results-body" role="tabpanel" aria-labelledby="factor-tab"><div id="priority-filters" class="priority-filters" aria-label="取得優先度で絞り込み"></div>
         <div class="filter-bar"><div class="category-filters" id="category-filters"></div><label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="skill-search" placeholder="スキルを検索" aria-label="スキルを検索"></label></div>
-        <div class="result-context"><span id="result-count"></span><label class="show-excluded"><input type="checkbox" id="show-excluded"> 見送りも表示</label></div>
+        <div class="result-context"><label class="show-excluded"><input type="checkbox" id="show-excluded"> 見送りも表示</label></div>
         <div id="skill-list" class="skill-list" aria-live="polite"></div>
-        <div class="bottom-note"><span class="info-icon">i</span><p>加速は本体固有・進化との重複を見て選び、すべてを必須とはしません。回復の必要量は最終ステータスなどで変わります。金スキルは白因子から取得できません。</p></div>
         </div>
         <div id="lineage-overview" class="lineage-overview" role="tabpanel" aria-labelledby="lineage-tab" hidden></div>
+        <details id="results-footer" class="results-footer"><summary>集計・補足・出典</summary><div class="stats-grid" id="stats"></div><p id="result-count"></p><div class="results-notice" id="results-notice"></div><div id="course-factor-summary" class="course-factor-summary"></div><p id="factor-view-note" class="factor-view-note">因子名をタップすると、因子周回の編成・イベント択・優先スキルを表示。継承固有は候補で、直接親は2人までです。</p><div id="lineage-footer-notes" hidden></div><div class="bottom-note"><span class="info-icon">i</span><p>加速は本体固有・進化との重複を見て選び、すべてを必須とはしません。回復の必要量は最終ステータスなどで変わります。金スキルは白因子から取得できません。</p></div></details>
       </section>
     </div>
     <footer class="footer"><span>UMAPLAN · 非公式ファンツール</span><button class="text-button" id="footer-sources">出典と判定の範囲を見る ↗</button></footer>
@@ -59,6 +56,7 @@
   <dialog id="info-dialog" class="info-dialog"><div class="dialog-heading"><h2 id="info-title"></h2><button class="close-button" id="close-info" aria-label="説明を閉じる">×</button></div><div id="info-content"></div></dialog>
   <dialog id="factor-dialog" class="factor-dialog"><div class="dialog-heading"><h2 id="factor-title">因子周回</h2><button class="close-button" id="close-factor" aria-label="因子周回を閉じる">×</button></div><div id="factor-content"></div></dialog>
   <dialog id="tier-dialog" class="tier-dialog" aria-labelledby="tier-title" aria-describedby="tier-course"><div class="dialog-heading"><div><p id="tier-course" class="tier-course"></p><h2 id="tier-title">有力ウマTier</h2></div><button class="close-button" id="close-tier" aria-label="Tier表を閉じる">×</button></div><div id="tier-content" class="tier-content"></div></dialog>
+  <dialog id="rotation-dialog" class="rotation-dialog" aria-labelledby="rotation-title"><div class="dialog-heading"><h2 id="rotation-title">おすすめローテ</h2><button class="close-button" id="close-rotation" aria-label="ローテを閉じる">×</button></div><div id="rotation-content"></div></dialog>
   <div id="toast" role="status" class="toast" hidden></div>
   <noscript><p>このアプリを使うにはJavaScriptを有効にしてください。</p></noscript>
 </body>

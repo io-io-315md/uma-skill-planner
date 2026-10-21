@@ -229,6 +229,6 @@ export function exportLineagePlan(plan,analysis,state={}) {
     if(node.scenario==='ura')lines.push('URAの真髄対決イベントも使用');
   }
   if(result.inheritedTargets.length)lines.push(`フレンド因子にも含める前提：${result.inheritedTargets.map(r=>r.name).join(' / ')}（代表・祖父母の白因子を確認）`);
-  lines.push(`フレンド側で補う白因子：${result.friendOnly.map(r=>r.name).join(' / ')||'自前側と重ねて確保'}`,`6人の編成でも取得元が足りない白因子：${result.missing.map(r=>r.name).join(' / ')||'なし'}`,'相性・共通勝利レース・所持/凸数は未評価。白因子化・継承は抽選。');
+  lines.push(`フレンド側で補う白因子：${result.friendOnly.map(r=>r.name).join(' / ')||'自前側と重ねて確保'}`,`6人の編成でも取得元が足りない白因子：${result.missing.map(r=>r.name).join(' / ')||'なし'}`,'キャラ固有の相性・所持/凸数は未評価。共通GⅠはおすすめローテで判定。白因子化・継承は抽選。');
   return lines.join('\n');
 }

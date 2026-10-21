@@ -13,6 +13,7 @@ import { FIXED_SUPPORT_SLOT } from './deck-rules.js';
 import { MAIN_DECK_GUIDE } from './main-deck-data.js';
 import { applyMainDeck, changeMainConditions } from './main-deck.js';
 import { loadLiveData, applyLiveData } from './live-data.js';
+import { planLineageRotations, exportRotation } from './race-planner.js';
 
 const $ = id => document.getElementById(id);
 const escape = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -34,7 +35,7 @@ function update(patch = {},options={}) {
   persist();render();
 }
 function toggle(array, value) { return array.includes(value) ? array.filter(v => v !== value) : [...array, value]; }
-function checklistText(){const plan=state.lineagePlans[lineagePlanKey(state)];return exportChecklist(state,analysis)+(plan?'\n\n'+exportLineagePlan(plan,analysis,state):'');}
+function checklistText(){const plan=state.lineagePlans[lineagePlanKey(state)];return exportChecklist(state,analysis)+(plan?'\n\n'+exportLineagePlan(plan,analysis,state)+'\n\n'+planLineageRotations(state,analysis,plan).rotations.map(exportRotation).join('\n\n'):'');}
 
 function render() {
   analysis = analyze(state, catalog);
@@ -96,11 +97,10 @@ function renderSetup() {
 function renderResults() {
   const {counts,course}=analysis;
   const uncertain=analysis.rows.filter(r=>!r.excluded&&r.status==='event-check').length;
-  $('results-title').textContent=view==='factor'?'必要な継承・白因子':view==='lineage'?'因子厳選用サポカ編成':'本育成の取得スキル';
+  $('results-title').textContent=view==='factor'?'必要な継承・白因子':view==='lineage'?'因子厳選':'本育成の取得スキル';
   $('stats').innerHTML=[['白因子が必要',counts.factor],['継承固有の候補',counts.inheritance],['本育成で取得候補',counts.available-uncertain],['イベント条件要確認',uncertain]].map(([label,n])=>`<div class="stat"><span class="stat-label">${label}</span><strong class="stat-number">${n}<small>件</small></strong></div>`).join('');
   const blanks=state.supports.filter(s=>!s).length;
   $('results-notice').innerHTML=`<span class="notice-dot">•</span><span>${!course.confirmed?'コース未確定のため、不足判定は表示しません。':!state.characterId?'本育成のウマ娘を選択してください。':blanks?`本育成のサポート ${6-blanks}/6枠。空き枠があるため不足一覧は仮の結果です。`:'本育成は金スキル側のイベント択で照合。白スキルを優先する択は因子周回で別に扱います。'}</span>`;
-  $('todo-count').textContent=counts.factor+counts.inheritance;
   document.querySelectorAll('[data-view]').forEach(button=>{button.classList.toggle('active',button.dataset.view===view);button.setAttribute('aria-selected',String(button.dataset.view===view));});
   $('course-factor-summary').hidden=view!=='factor'||!state.characterId;
   $('course-factor-summary').innerHTML=COURSES.filter(c=>c.confirmed).map(c=>{
@@ -111,10 +111,11 @@ function renderResults() {
   $('skill-results-body').hidden=view==='lineage';
   $('skill-results-body').setAttribute('aria-labelledby',view==='all'?'all-tab':'factor-tab');
   $('lineage-overview').hidden=view!=='lineage';
-  if(view==='lineage'){lineageUI?.render();return;}
+  $('lineage-footer-notes').hidden=view!=='lineage';
+  if(view==='lineage'){$('result-count').textContent='';lineageUI?.render();return;}
   $('category-filters').innerHTML=['すべて',...CATEGORIES].map(c=>`<button class="category-button ${category===c?'active':''}" data-category="${c}" aria-pressed="${category===c}">${c}</button>`).join('');
   const scopedRows=analysis.rows.filter(r=>(showExcluded||!r.excluded)&&(category==='すべて'||r.category===category)&&(!query||`${r.name} ${r.gold??''} ${r.ownerName??''} ${r.reason} ${r.priorityReason}`.toLowerCase().includes(query.toLowerCase()))&&(view==='all'||needsFactor({...r,excluded:false})||r.status==='event-check'));
-  $('priority-filters').innerHTML=['all',1,2,3].map(level=>`<button class="priority-filter ${String(priorityFilter)===String(level)?'active':''}" data-priority="${level}" aria-pressed="${String(priorityFilter)===String(level)}">${level==='all'?'全優先度':`<span class="priority-code priority-code-${level}">${PRIORITIES[level]}</span>`}<span class="priority-count">${level==='all'?scopedRows.length:scopedRows.filter(r=>r.priority===level).length}</span></button>`).join('');
+  $('priority-filters').innerHTML=['all',1,2,3].map(level=>`<button class="priority-filter ${String(priorityFilter)===String(level)?'active':''}" data-priority="${level}" aria-pressed="${String(priorityFilter)===String(level)}">${level==='all'?'全優先度':`<span class="priority-code priority-code-${level}">${PRIORITIES[level]}</span>`}</button>`).join('');
   const rows=scopedRows.filter(r=>priorityFilter==='all'||r.priority===Number(priorityFilter));
   $('result-count').textContent=course.confirmed?`${rows.length}件を表示 / 優先度順`:'詳細発表待ち';
   if(!course.confirmed)$('skill-list').innerHTML=`<div class="empty-state"><h3>コース詳細未発表</h3><p>発表済みの条件は「${course.surface}・${course.distanceType}」。コース確定後に推奨を追加します。</p><a href="${SOURCES.official.url}" target="_blank" rel="noopener noreferrer">公式スケジュール ↗</a></div>`;

@@ -1,0 +1,21 @@
+import {artwork,escape} from './ui.js';
+import {raceDate,raceDateLabel,gradeLabel,ROTATION_SOURCES} from './race-planner.js';
+
+export const factorMix=factors=>Object.entries(factors.reduce((out,f)=>{out[f.type]=(out[f.type]??0)+f.stars;return out;},{})).map(([type,stars])=>`${type}★${stars}`).join('・');
+
+export function preparationHTML(prep){
+  if(!prep)return '';
+  return `<div class="rotation-preparation" aria-label="この因子を育てるための赤因子"><strong>育成に使う赤因子</strong><p><b>親</b> ${escape(factorMix(prep.parents))}</p><p><b>祖父母</b> ${escape(factorMix(prep.grandparents))}</p><p class="rotation-red-total">合計 ${escape(factorMix(prep.factors))}</p><div class="rotation-aptitudes">${prep.changes.map(c=>`<span>${escape(c.type)} ${c.initial}→${c.projected}</span>`).join('')}</div>${!prep.ready?`<p class="rotation-required">${escape(prep.target.type)}赤因子を出すにはAが必要。開始時${prep.outputRank??'不明'}のため育成中の追加継承も必要。</p>`:''}${prep.fixedCount?'<span class="rotation-parent-reference">親はツリーの祖父母2人の赤因子を使用</span>':''}</div>`;
+}
+
+const modeLabels={reserve:'予約する',automatic:'自動目標',branch:'分岐で選択',random:'抽選目標',conditional:'条件付き目標','conditional-branch':'条件で変わる目標'};
+export function rotationPopupHTML(rotation,nodeLabel){
+  if(!rotation.character)return '<p>因子にするウマを選択してください。</p>';
+  const groups=rotation.groups.filter(g=>g.options.length>1);
+  return `<div class="rotation-owner">${artwork(rotation.character)}<div><small>${escape(nodeLabel)}</small><h3>${escape(rotation.character.name)}</h3></div><button class="outline-button" data-rotation-copy>ローテをコピー</button></div>
+    ${rotation.issues.length?`<div class="rotation-required" role="status">${rotation.issues.map(escape).join('<br>')}</div>`:''}
+    ${groups.length?`<section class="rotation-choices"><h4>目標レースの分岐</h4>${groups.map(group=>`<label>${group.mode==='random'?'抽選で指定された目標に合わせる':group.mode==='select'?'この目標を選ぶ':'ゲーム内で指定された目標に合わせる'}<select data-rotation-goal="${group.order}" aria-label="目標${group.order}のレース分岐">${group.options.map((goal,i)=>`<option value="${i}" ${Number(rotation.selected[group.order])===i?'selected':''}>${escape(goal.races.map(r=>r.name).join(' / ')||'育成イベント')}（${escape(raceDateLabel(goal.turn))}）</option>`).join('')}</select></label>`).join('')}${rotation.character.characterId===1005?`<p class="rotation-route-choice">${Number(rotation.selected['5'])===1?'三冠路線：日本ダービー＋菊花賞を選ぶ':'マイル路線：NHKマイルC＋マイルCSを選ぶ'}</p>`:''}</section>`:''}
+    <div class="rotation-legend"><span class="rotation-mode rotation-reserve">予約する</span><span class="rotation-mode rotation-automatic">自動目標＝予約不要</span><span class="rotation-mode rotation-branch">分岐＝指定のレースを選択</span></div>
+    ${[1,2,3].map(year=>`<section class="rotation-year"><h4>${['','ジュニア級','クラシック級','シニア級'][year]}</h4><div class="rotation-table-wrap"><table class="rotation-table"><thead><tr><th>時期</th><th>レース</th><th>予約・選択</th></tr></thead><tbody>${rotation.rows.filter(r=>raceDate(r.turn).year===year).map(r=>{const date=raceDate(r.turn);return `<tr class="rotation-row-${r.mode}"><td>${date.month}月${date.half}${r.streak>=3?`<small>${r.streak}連戦目</small>`:''}</td><td><strong>${escape(r.name)}</strong><small>${gradeLabel(r.grade)} / ${r.surface} ${r.distance}m${r.purpose?` / ${escape(r.purpose)}`:''}${r.canWin?'':' / 勝利の計上外'}</small></td><td><span class="rotation-mode rotation-${r.mode}">${modeLabels[r.mode]}</span>${r.mode==='branch'?`<small>${escape(r.name)}を選択</small>`:r.mode==='conditional'?'<small>目標に出なければ予約</small>':r.mode==='random'||r.mode==='conditional-branch'?'<small>目標が違う場合は上で変更</small>':''}</td></tr>`;}).join('')}</tbody></table></div></section>`).join('')}
+    <details class="rotation-notes"><summary>ローテの条件・出典</summary><p>同じGⅠは複数年勝っても共通勝利の計算では1種類。目標レース・分岐・必要ファン数と、親同士／各親とその祖父母の共通GⅠを照合した探索案です。予約と育成はゲーム内で行ってください。</p><p>ユーザー指定の手動周回基準：バ場D・距離C以上（ダートD、マイルCを含む）。3連戦を許容し、4連戦以上も共通GⅠが増える場合は候補に含めます。自主トレの勝率保証には使いません。出走予定すべての勝利や、スキルPt・最終評価の最適性を保証する表示ではありません。</p><p>ファン数はサポカのファンボーナスを加算せず、予定レース1着時の人数で確認。敗北した場合は予定を見直してください。条件付き目標や抽選目標は、ゲーム内で表示された内容を優先して上の分岐を合わせてください。</p><a href="${escape(rotation.character.source)}" target="_blank" rel="noopener noreferrer">${escape(rotation.character.characterName)}の育成目標 ↗</a>${ROTATION_SOURCES.map(s=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer">${escape(s.name)}（${s.date}） ↗</a>`).join('')}</details>`;
+}
