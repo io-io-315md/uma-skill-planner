@@ -1,0 +1,270 @@
+{
+  "verifiedAt": "2026-10-28",
+  "cards": [
+    {
+      "id": 30322,
+      "source": "https://gametora.com/ja/umamusume/supports/30322-mayano-top-gun",
+      "verifiedAt": "2026-10-28",
+      "events": [
+        {
+          "id": "evt_30322_random2",
+          "label": "マヤノ的ファッション会議！",
+          "selection": "single",
+          "skills": [],
+          "choices": [
+            {
+              "id": "choice1",
+              "label": "① 最新の技有りコーデ！｜直線巧者",
+              "skills": [
+                {
+                  "skillId": 200362
+                }
+              ]
+            },
+            {
+              "id": "choice2",
+              "label": "② 動きやすい機能美コーデ！",
+              "skills": []
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_30322_arrows2",
+          "label": "みんなに必要なもの",
+          "selection": "single",
+          "skills": [],
+          "choices": [
+            {
+              "id": "choice1",
+              "label": "① 成長した、っていうこと？",
+              "skills": []
+            },
+            {
+              "id": "choice2",
+              "label": "② いいきっかけがあったみたいだな｜アオハル点火・賢",
+              "skills": [
+                {
+                  "skillId": 210052
+                }
+              ]
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_30322_arrows3",
+          "label": "マヤ、わかっちゃった！",
+          "selection": "single",
+          "skills": [],
+          "choices": [
+            {
+              "id": "choice1",
+              "label": "① 立派な“大人”だ……！｜英俊豪傑＋機転",
+              "skills": [
+                {
+                  "skillId": 203501
+                },
+                {
+                  "skillId": 204731
+                }
+              ]
+            },
+            {
+              "id": "choice2",
+              "label": "② 本当の意味で“わかった”んだな｜英俊豪傑＋希代の才覚",
+              "skills": [
+                {
+                  "skillId": 203501
+                },
+                {
+                  "skillId": 204741
+                }
+              ]
+            },
+            {
+              "id": "choice3",
+              "label": "③ マ……マヤノ様ぁ……！｜英俊豪傑＋アドバンテージ",
+              "skills": [
+                {
+                  "skillId": 203501
+                },
+                {
+                  "skillId": 204751
+                }
+              ]
+            }
+          ],
+          "defaultChoiceId": null
+        }
+      ]
+    },
+    {
+      "id": 30323,
+      "source": "https://gametora.com/ja/umamusume/supports/30323-azuma",
+      "verifiedAt": "2026-10-28",
+      "events": [
+        {
+          "id": "evt_30323_special4",
+          "label": "吾妻との絆・新たなる年に",
+          "selection": "all",
+          "skills": [
+            {
+              "skillId": 200512
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_30323_random2",
+          "label": "求むるは、新たな書",
+          "selection": "single",
+          "skills": [],
+          "choices": [
+            {
+              "id": "choice1",
+              "label": "① 新たな出会いがありますから！",
+              "skills": []
+            },
+            {
+              "id": "choice2",
+              "label": "② 書庫充実にも繋がりますよ｜弧を描いて",
+              "skills": [
+                {
+                  "skillId": 204812
+                }
+              ]
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_30323_dates2",
+          "label": "流れ、追い難く",
+          "selection": "all",
+          "skills": [
+            {
+              "skillId": 202552
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_30323_dates5",
+          "label": "其は泡沫、されど――",
+          "selection": "all",
+          "skills": [
+            {
+              "skillId": 202551
+            }
+          ],
+          "defaultChoiceId": null
+        }
+      ]
+    },
+    {
+      "id": 10149,
+      "source": "https://gametora.com/ja/umamusume/supports/10149-azuma",
+      "verifiedAt": "2026-10-28",
+      "events": [
+        {
+          "id": "evt_10149_special4",
+          "label": "吾妻との絆・新たなる年に",
+          "selection": "all",
+          "skills": [
+            {
+              "skillId": 200512
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_10149_random2",
+          "label": "求むるは、新たな書",
+          "selection": "single",
+          "skills": [],
+          "choices": [
+            {
+              "id": "choice1",
+              "label": "① 新たな出会いがありますから！",
+              "skills": []
+            },
+            {
+              "id": "choice2",
+              "label": "② 書庫充実にも繋がりますよ｜弧を描いて",
+              "skills": [
+                {
+                  "skillId": 204812
+                }
+              ]
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_10149_dates2",
+          "label": "流れ、追い難く",
+          "selection": "all",
+          "skills": [
+            {
+              "skillId": 202552
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_10149_dates5",
+          "label": "其は泡沫、されど――",
+          "selection": "all",
+          "skills": [
+            {
+              "skillId": 202551
+            }
+          ],
+          "defaultChoiceId": null
+        }
+      ]
+    },
+    {
+      "id": 30321,
+      "source": "https://gametora.com/ja/umamusume/supports/30321-duramente",
+      "verifiedAt": "2026-10-28",
+      "events": [
+        {
+          "id": "evt_30321_random2",
+          "label": "追うべき背中",
+          "selection": "single",
+          "skills": [],
+          "choices": [
+            {
+              "id": "choice1",
+              "label": "① ……体が心配になるよ",
+              "skills": []
+            },
+            {
+              "id": "choice2",
+              "label": "② じゃあ、走りで調子が戻ればいいな｜イグニッション",
+              "skills": [
+                {
+                  "skillId": 202602
+                }
+              ]
+            }
+          ],
+          "defaultChoiceId": null
+        },
+        {
+          "id": "evt_30321_arrows3",
+          "label": "『満月に光りしは、赤い石』",
+          "selection": "all",
+          "skills": [
+            {
+              "skillId": 201463
+            }
+          ],
+          "defaultChoiceId": null
+        }
+      ]
+    }
+  ]
+}

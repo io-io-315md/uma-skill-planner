@@ -16,7 +16,7 @@ function cardOptions(card,index,course,style){
   let options=[{card,ids:[...card.hintSkills.filter(valid)],eventChoices:{}}];
   for(const event of card.events){
     if(event.selection!=='single'){for(const option of options)option.ids.push(...event.skills.filter(valid));continue;}
-    const choices=eventChoicesForPurpose(event,index,'main').filter(c=>{const gold=c.skills.filter(id=>index.skills.get(id)?.rarity===2);return gold.length&&gold.every(valid);});
+    const choices=eventChoicesForPurpose(event,index,'main').filter(c=>c.skills.filter(id=>index.skills.get(id)?.rarity===2).every(valid));
     if(!choices.length)continue;
     options=options.flatMap(o=>choices.map(c=>({card,ids:[...o.ids,...c.skills.filter(valid)],eventChoices:{...o.eventChoices,[event.id]:c.id}})));
   }
@@ -26,7 +26,7 @@ export function suggestMainDeck(state,catalog,guide=MAIN_DECK_GUIDE){
   const index=createIndex(catalog),character=index.characters.get(state.characterId),course=COURSES.find(c=>c.id===state.courseId)??COURSES[0];
   if(!character)return {supports:[null,null,null,null,null,FIXED_SUPPORT_ID],eventChoices:{},status:'unselected',sourceIds:[],reasons:[]};
   const event=guide.events.find(e=>e.courseId===course.id&&e.distance===course.distance&&e.surface===course.surface&&e.venue===course.venue);
-  const base=event?.decks[state.style];
+  const base=event?.decks[state.style]??guide.defaults?.[state.style];
   const types=base?base.map(id=>index.supports.get(id)?.type):['speed','speed','stamina','power','wit'];
   const native=new Set([...character.innate,...character.awakening].flatMap(id=>lowerClosure(id,index)));
   const rows=RECOMMENDATIONS.filter(r=>r.courses.includes(course.id)&&r.styles.includes(state.style)&&!r.inherited);
@@ -56,8 +56,10 @@ export function suggestMainDeck(state,catalog,guide=MAIN_DECK_GUIDE){
     beam=next.slice(0,32);
   }
   const selected=beam[0]??[],supports=Array.from({length:5},(_,slot)=>selected.find(o=>o.slot===slot)?.card.id??null);
+  const fixed=index.supports.get(FIXED_SUPPORT_ID);
+  const fixedChoice=fixed?cardOptions(fixed,index,course,state.style).sort((a,b)=>b.ids.size-a.ids.size)[0]:null;
   const reasons=selected.map(o=>({slot:o.slot,cardId:o.card.id,gold:[...o.gold].filter(id=>!native.has(id)).map(id=>index.skills.get(id)?.name),replacement:!!base&&base[o.slot]!==o.card.id}));
-  return {supports:[...supports,FIXED_SUPPORT_ID],eventChoices:Object.assign({},...selected.map(o=>o.eventChoices)),status:event&&course.confirmed?'reviewed':'provisional',sourceIds:event?.sourceIds??[],reasons};
+  return {supports:[...supports,FIXED_SUPPORT_ID],eventChoices:Object.assign({},...selected.map(o=>o.eventChoices),fixedChoice?.eventChoices),status:event&&course.confirmed?'reviewed':'provisional',sourceIds:event?.sourceIds??[],reasons};
 }
 export function applyMainDeck(state,catalog,guide=MAIN_DECK_GUIDE){
   if(!state.characterId)return state;

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {farmingFixedSupportId} from '../dist/deck-rules.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { analyze, createIndex, normalizeState, normalizeLineagePlan } from '../dist/engine.js';
@@ -6,7 +7,7 @@ import { suggestCoverageDeck, suggestLineagePlan, analyzeLineagePlan, analyzeCov
 import { FARMING_POLICY } from '../dist/farming-policy.js';
 
 const catalog=JSON.parse(fs.readFileSync(new URL('../dist/data/catalog.json',import.meta.url)));
-const main=patch=>normalizeState({characterId:107601,style:'差し',supports:[30317,30304,30306,30302,30287,30305],...patch},catalog);
+const main=patch=>normalizeState({characterId:107601,style:'差し',supports:[30317,30304,30306,30302,30287,30323],...patch},catalog);
 const row=(id,priority=1)=>({name:`skill${id}`,skillId:id,priority,status:'factor',factorEligible:true});
 const support=(id,skills,rarity='SSR',extra={})=>({id,characterId:1000+id,name:`support${id}`,characterName:`support${id}`,type:'power',rarity,hintSkills:skills,eventSkills:[],events:[],...extra});
 function fixture(supports,rows){const data={supports,characters:[{id:1,characterId:1,name:'parent',characterName:'parent',innate:[],awakening:[],eventSkills:[]}],skills:rows.map(r=>({id:r.skillId,name:r.name,rarity:1}))};return {catalog:data,analysis:{index:createIndex(data),rows}};}
@@ -48,8 +49,8 @@ test('京都3000の実データでは全脚質で高を網羅し、同キャラ�
       const char=analysis.index.characters.get(node.characterId),cards=node.supports.filter(Boolean).map(id=>analysis.index.supports.get(id));
       assert.equal(new Set(cards.map(s=>s.characterId)).size,cards.length);
       assert.ok(cards.every(s=>s.characterId!==char.characterId));
-      assert.equal(node.supports[5],30305,'今回の周回案はたづな1枠を確保する');
-      assert.equal(node.supports.filter(id=>id===30305).length,1);
+      assert.equal(node.supports[5],farmingFixedSupportId(node.scenario),'周回シナリオに合う友人1枠を確保する');
+      assert.equal(node.supports.filter(id=>id===farmingFixedSupportId(node.scenario)).length,1);
       assert.ok(r.assignments[i].every(t=>r.results[i].covered.some(row=>row.skillId===t.skillId)));
     }
     assert.ok(r.covered.every(t=>r.assignments.some(rows=>rows.some(r=>r.skillId===t.skillId))));
@@ -59,7 +60,7 @@ test('京都3000の実データでは全脚質で高を網羅し、同キャラ�
 test('体だけが不足する場合、6個体のサポカもURAも体のために指定しない',()=>{
   const state=main({}),full=analyze(state,catalog),body=full.rows.find(r=>r.name==='レースの真髄・体');
   const analysis={...full,rows:[body]},p=suggestLineagePlan(state,analysis,catalog),r=analyzeLineagePlan(p,analysis);
-  assert.ok(p.nodes.every(n=>n.supports.filter(Boolean).length===1&&n.supports[5]===30305&&n.scenario==='support'));
+  assert.ok(p.nodes.every(n=>n.supports.filter(Boolean).length===1&&n.supports[5]===30323&&n.scenario==='support'));
   assert.deepEqual(r.covered,[]);assert.deepEqual(r.missing,[]);assert.deepEqual(r.targets,[]);
   assert.equal(r.inheritedTargets.length,1);assert.equal(body.priority,1);
   const text=exportLineagePlan(p,analysis,state);
@@ -72,7 +73,7 @@ test('旧ツリーも体だけのカードを更新し、手動の赤因子・�
   const state=main({}),full=analyze(state,catalog),body=full.rows.find(r=>r.name==='レースの真髄・体'),analysis={...full,rows:[body]};
   const p=suggestLineagePlan(state,analysis,catalog),event=catalog.supports.find(s=>s.id===30283).events.find(e=>e.selection==='single');
   const slot=p.nodes.findIndex(n=>analysis.index.characters.get(n.characterId)?.characterId!==1022);
-  p.nodes[slot]={...p.nodes[slot],supports:[30283,null,null,null,null,30305],eventChoices:{[event.id]:event.choices.find(c=>c.skills.includes(body.skillId)).id},learned:[body.name],farmingPolicy:''};
+  p.nodes[slot]={...p.nodes[slot],supports:[30283,null,null,null,null,30323],eventChoices:{[event.id]:event.choices.find(c=>c.skills.includes(body.skillId)).id},learned:[body.name],farmingPolicy:''};
   p.manual=true;p.friendSide=0;const before=structuredClone(p),updated=refreshLineagePolicy(p,analysis,catalog);
   assert.deepEqual(p,before);assert.equal(updated.manual,true);assert.equal(updated.friendSide,0);
   assert.deepEqual(updated.nodes.map(n=>n.characterId),p.nodes.map(n=>n.characterId));assert.deepEqual(updated.nodes.map(n=>n.redFactor),p.nodes.map(n=>n.redFactor));
@@ -129,7 +130,7 @@ test('親・祖父母のSR/R・択・チェックを本育成とは独立して�
   assert.deepEqual(branchIndices(0),[0,2,3]);
   assert.equal(normalizeState({},catalog).lineagePlans.constructor,Object);
   assert.notEqual(key,lineagePlanKey({...state,courseId:'2026-12-cm'}));
-  const changed=main({supports:[null,null,null,null,null,30305]});
+  const changed=main({supports:[null,null,null,null,null,30323]});
   assert.notEqual(lineageSignature(changed,analyze(changed,catalog)),p.signature);
   const text=exportLineagePlan(p,analysis);
   assert.match(text,/親1：.*フレンド/);assert.match(text,/祖父母4：/);assert.match(text,/本人所持が必要/);assert.match(text,/因子厳選サポカ/);
@@ -139,5 +140,5 @@ test('インポート時の不正な系譜を補正し、本人や重複キャ�
   const p=normalizeLineagePlan({friendSide:9,nodes:[{characterId:107601},{characterId:113501},{characterId:113501},{characterId:999999}]},catalog,107601);
   assert.equal(p.friendSide,1);assert.equal(p.nodes.length,6);
   assert.deepEqual(p.nodes.slice(0,4).map(n=>n.characterId),[null,113501,null,null]);
-  assert.deepEqual(p.nodes[1].supports,[null,null,null,null,null,30305]);
+  assert.deepEqual(p.nodes[1].supports,[null,null,null,null,null,30323]);
 });

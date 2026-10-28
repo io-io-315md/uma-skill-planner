@@ -1,8 +1,10 @@
 // 執筆者本人の当該開催向け公開情報を比較した編集評価。実測勝率ではない。
-export const TIER_VERIFIED_AT = '2026-10-19';
+export const TIER_VERIFIED_AT = '2026-10-28';
 export const TIER_ORDER = ['S', 'A', 'B'];
 export const TIER_LABELS = { S:'突出した最有力', A:'有力候補', B:'編成・条件次第' };
 export const TIER_SOURCES = {
+  kyotoDaiwaLab:{name:'ルネ｜ウマ娘ラボ',courseId:'2026-11-loh',platform:'blog',publishedAt:'2026-10-25',contentAsOf:'2026-10-25',title:'駿大祭ダイワスカーレットの評価',url:'https://umamusumelabo.com/chara_support/dasuka-suntaisai',scope:'2026年11月LoHを含む長距離・逃げ',note:'長距離逃げの有力評価と、11月の相方に関する留保を参照。'},
+  kyotoNewNeko:{name:'Neko長明｜note',courseId:'2026-11-loh',platform:'note',publishedAt:'2026-10-25',contentAsOf:'2026-10-25',title:'ぱかライブの発表まとめとLoH攻略',url:'https://note.com/neko_chomei/n/nec35983fdc59',scope:'2026年11月LoH・新衣装と編成環境',note:'新ダスカは一級線だが単独覇権ではないとの評価、逃げの組み合わせを公開部分で比較。'},
   kyotoLab: {
     name:'ルネ｜ウマ娘ラボ', courseId:'2026-11-loh', platform:'blog', publishedAt:'2026-10-14', contentAsOf:'2026-10-14',
     title:'11月LoH・京都3000mの必須知識とおすすめウマ娘',
@@ -33,10 +35,11 @@ export const COURSE_TIERS = {
   '2026-11-loh': {
     status:'published',
     conditions:{venue:'京都',surface:'芝',distance:3000,runners:12,type:'LoH',turn:'右・外',season:'秋',weather:'ランダム',going:'ランダム',time:'昼'},
-    sourceIds:['kyotoLab','kyotoMammoth','kyotoNeko'],
-    context:'上位入着の安定性を重視。10月3〜14日の当該開催向け公開情報を比較し、Sはラーメントプロに絞った。新シナリオ実装前の暫定評価。',
+    sourceIds:['kyotoLab','kyotoMammoth','kyotoNeko','kyotoDaiwaLab','kyotoNewNeko'],
+    context:'駿大祭実装直後の暫定評価。10月25日のラボとnoteで新衣装ダスカを追加。既存候補は当該開催の公開比較を引き続き参照し、シナリオ変更後の実測順位とは扱わない。',
     disagreement:'ルドルフはラボで最高評価、Neko長明の先行表ではA。逃げはNeko長明が選択肢として残す一方、より新しいラボ記事は環境に慎重。星評価や先行内の順位を、そのまま総合Tierには置き換えていない。',
     entries:[
+      entry(100903,'駿大祭','A',['逃げ'],'ラボは長距離逃げの最上位、noteは一級線だが覇権級ではないと評価。有力な新候補として追加。','逃げの相方・先行との編成を検討。逃げ全体が先行を上回ったと断定する評価ではない。',[evidence('kyotoDaiwaLab','10/25：11月LoHでも有力、逃げの相方には留保'),evidence('kyotoNewNeko','10/25：一級線の長距離逃げだが、編成によって判断')],{mixed:true}),
       entry(107703,'ラーメン','S',['先行'],
         'ラボの最上位評価とnoteの先行Sが一致。自前の終盤加速の安定性を高く評価。',
         '固有の回復条件を満たす。同キャラのクリスマス衣装からは継承できない。',
@@ -67,7 +70,7 @@ export const COURSE_TIERS = {
         [evidence('kyotoNeko','10/3：長距離の有力な逃げ2人の一人'),evidence('kyotoLab','10/14：個別採点はなく、逃げ全体には慎重')],{mixed:true}),
       entry(102403,'ハロウィン','B',['逃げ'],
         '複数のnoteが長距離の逃げ候補として挙げる。逃げ編成を用意する場合の選択肢。',
-        '新シナリオのリンク効果を強さに加算していない。ラボの逃げ環境への慎重な見方も確認する。',
+        '本人のパワーマヤノをサポカに編成できない。新パワー枠を使う他の逃げ候補との比較が必要。',
         [evidence('kyotoNeko','10/3：長距離の有力な逃げ2人の一人'),evidence('kyotoMammoth','10/7：有力候補として言及'),evidence('kyotoLab','10/14：個別採点はなく、逃げ全体には慎重')],{mixed:true}),
       entry(102303,'メカ','B',['先行'],
         'noteが中盤固有を理由に候補として挙げる。上位先行を揃えられない場合などに比較。',

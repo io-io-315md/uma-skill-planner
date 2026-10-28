@@ -13,7 +13,7 @@ const storage=()=>{const data=new Map();return {getItem:key=>data.get(key),setIt
 
 test('現在の開催条件・推奨・noteとラボの出典を更新データに含める',()=>{
   const data=validateLiveData(payload,catalog);
-  assert.equal(data.mainDeckGuide.verifiedAt,'2026-10-20');
+  assert.equal(data.mainDeckGuide.verifiedAt,'2026-10-28');
   const nov=data.mainDeckGuide.events.find(e=>e.courseId==='2026-11-loh');
   assert.ok(nov.sourceIds.some(id=>data.sources[id].url.startsWith('https://note.com/')));
   assert.ok(nov.sourceIds.includes('november'));assert.equal(data.priorityRules['レースの真髄・体'].priority,1);
@@ -51,5 +51,5 @@ test('新たにコース詳細・推奨・編成が公開されたら同じペ�
     assert.ok(a.rows.some(r=>r.name==='左回り○'));assert.equal(state.mainDeck.revision,'future-test');assert.equal(state.mainDeck.status,'reviewed');
     assert.ok(!a.rows.some(r=>r.name==='秋ウマ娘○'));assert.equal(PRIORITY_RULES['レースの真髄・体'].priority,1);
   }finally{applyLiveData(validateLiveData(payload,catalog));}
-  assert.equal(COURSES.find(c=>c.id===jan.id).confirmed,false);assert.ok(!RECOMMENDATIONS.some(r=>r.reason==='テスト用'));assert.equal(MAIN_DECK_GUIDE.revision,payload.mainDeckGuide.revision);
+  assert.equal(COURSES.find(c=>c.id===jan.id).confirmed,payload.courses.find(c=>c.id===jan.id).confirmed);assert.ok(!RECOMMENDATIONS.some(r=>r.reason==='テスト用'));assert.equal(MAIN_DECK_GUIDE.revision,payload.mainDeckGuide.revision);
 });

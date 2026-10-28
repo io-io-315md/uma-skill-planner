@@ -12,7 +12,7 @@ test('本育成はSSRのみ、因子周回はSSR・SR・Rを実装日が新し�
   assert.deepEqual([...new Set(farming.map(s=>s.rarity))].sort(),['R','SR','SSR']);
   assert.equal(farming.length,catalog.supports.length);
   for(const list of [main,farming]) {
-    assert.deepEqual(list.slice(0,3).map(s=>s.id),[30321,30320,30319]);
+    assert.deepEqual(list.slice(0,3).map(s=>s.id),list===main?[30323,30322,30321]:[30323,30322,10149]);
     for(let i=1;i<list.length;i++)assert.ok(compareSupportRecency(list[i-1],list[i])<=0);
     assert.ok(list.every(s=>/^\d{4}-\d{2}-\d{2}$/.test(s.releaseDate)));
   }

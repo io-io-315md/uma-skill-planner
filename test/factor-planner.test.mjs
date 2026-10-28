@@ -5,7 +5,7 @@ import {analyze,normalizeState,acquisitionRoutes,eventChoicesForPurpose,normaliz
 import {suggestFactorPlan,analyzeFactorPlan,factorPlanKey,candidateSources,completeFactorChoices,refreshFarmingPolicy} from '../dist/factor-planner.js';
 import {FARMING_POLICY} from '../dist/farming-policy.js';
 const catalog=JSON.parse(fs.readFileSync(new URL('../dist/data/catalog.json',import.meta.url)));
-const main=patch=>normalizeState({characterId:107601,style:'差し',supports:[30317,30304,30306,30302,30283,30305],...patch},catalog);
+const main=patch=>normalizeState({characterId:107601,style:'差し',supports:[30317,30304,30306,30302,30283,30323],...patch},catalog);
 const find=(analysis,name)=>analysis.rows.find(r=>r.name===name);
 
 test('本育成で金と引き換えになる白択を除外し、因子周回では選択できる',()=>{
@@ -82,7 +82,7 @@ test('周回キャラ本人のサポートは候補から除外する',()=>{
  const fine=catalog.characters.find(c=>c.characterId===1022);
  assert.ok(candidateSources(a,focus,catalog,fine.id).every(s=>s.support.characterId!==1022));
  const p=normalizeFarmingProfile({characterId:fine.id,supports:[30283,30283],learned:'invalid',eventChoices:null},catalog);
- assert.deepEqual(p.supports,[null,null,null,null,null,30305]);assert.deepEqual(p.learned,[]);
+ assert.deepEqual(p.supports,[null,null,null,null,null,30323]);assert.deepEqual(p.learned,[]);
 });
 test('周回の択を未指定へ戻したら自動で白択へ戻さない',()=>{
  const state=main({}),a=analyze(state,catalog),focus=find(a,'レースの真髄・体'),p=suggestFactorPlan(state,a,focus,catalog,{anchorSupportId:30283});
@@ -105,7 +105,7 @@ test('旧保存の体だけを担うファインを更新し、赤因子・周�
  const before=structuredClone(legacy),updated=refreshFarmingPolicy(legacy,a,catalog,focus);
  assert.deepEqual(legacy,before);assert.ok(!updated.supports.includes(30283));assert.equal(updated.anchorSupportId,null);
  assert.deepEqual(updated.redFactor,legacy.redFactor);assert.equal(updated.characterId,legacy.characterId);assert.deepEqual(updated.learned,legacy.learned);
- assert.equal(updated.supports[5],30305);assert.equal(updated.farmingPolicy,FARMING_POLICY);
+ assert.equal(updated.supports[5],30323);assert.equal(updated.farmingPolicy,FARMING_POLICY);
  const explicit=suggestFactorPlan(state,a,focus,catalog,{anchorSupportId:30283});
  assert.equal(refreshFarmingPolicy(explicit,a,catalog,focus),explicit,'新方針で手動指定したカードは維持する');
 });
@@ -113,7 +113,7 @@ test('旧保存の体だけを担うファインを更新し、赤因子・周�
 test('ファインに体以外の不足スキルの役割があれば旧保存でも残す',()=>{
  const state=main({}),full=analyze(state,catalog),body=find(full,'レースの真髄・体'),white=full.index.normalByName.get('気持ちを乗せて');
  const other={...body,name:white.name,skillId:white.id},a={...full,rows:[body,other]};
- const candidates={...catalog,supports:catalog.supports.filter(s=>[30283,30305].includes(s.id))};
+ const candidates={...catalog,supports:catalog.supports.filter(s=>[30283,30323].includes(s.id))};
  const p=suggestFactorPlan(state,a,other,candidates,{characterId:113501});
  assert.ok(p.supports.includes(30283),'他の不足スキルでは自動提案の対象に残る');
  const updated=refreshFarmingPolicy({...p,farmingPolicy:''},a,catalog,other);

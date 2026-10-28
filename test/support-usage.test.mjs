@@ -63,17 +63,17 @@ test('長距離で新テイオーの中距離限定択を自動選択せず、�
   assert.ok(resolvedEventChoice(young,normalizeState({},catalog),index).skills.includes(204181));
 });
 
-test('SSRたづなを本育成と因子周回の6枠目に固定し、周回の残りはSSR・SR・Rを保つ',()=>{
+test('SSR吾妻を本育成と因子周回の6枠目に固定し、周回の残りはSSR・SR・Rを保つ',()=>{
   assert.equal(FIXED_SUPPORT_SLOT,5);assert.equal(RENTAL_SUPPORT_SLOT,4);
   const state=normalizeState({},catalog);assert.equal(state.supports[5],FIXED_SUPPORT_ID);
   assert.equal(normalizeState({supports:[null,null,null,null,null,30289]},catalog).supports[5],FIXED_SUPPORT_ID);
-  const swapped=normalizeState({supports:[30305,30304,30306,30302,30283,30289]},catalog);
-  assert.deepEqual(swapped.supports,[30289,30304,30306,30302,30283,30305]);
+  const swapped=normalizeState({supports:[30323,30304,30306,30302,30283,30289]},catalog);
+  assert.deepEqual(swapped.supports,[30289,30304,30306,30302,30283,30323]);
   assert.equal(new Set(swapped.supports).size,6);
   const farming=normalizeFarmingProfile({supports:[30289]},catalog);assert.equal(farming.supports[5],FIXED_SUPPORT_ID);
   assert.equal(farming.supports.filter(id=>id===FIXED_SUPPORT_ID).length,1);
   const text=exportChecklist(swapped,analyze(swapped,catalog));
-  assert.match(text,/6\. .*駿川たづな \[固定\]/);
+  assert.match(text,/6\. .*吾妻 \[固定\]/);
   const deck=text.split('サポート編成\n')[1].split('\n\n')[0];
   assert.doesNotMatch(deck,/自前|レンタル/);
 });

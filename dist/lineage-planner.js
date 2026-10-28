@@ -1,7 +1,7 @@
 import { acquisitionRoutes, normalizeFarmingProfile, normalizeLineagePlan } from './engine.js';
 import { farmingTargets, inheritedFarmingTargets, supportOptions, URA_METHODS, refreshFarmingPolicy } from './factor-planner.js';
 import { FARMING_POLICY, INHERITED_FACTOR_NOTE } from './farming-policy.js';
-import { FIXED_SUPPORT_ID } from './deck-rules.js';
+import { farmingFixedSupportId } from './deck-rules.js';
 import { suggestRedFactors, analyzeRedPlan } from './factor-targets.js';
 
 export const LINEAGE_NODES=[
@@ -67,7 +67,7 @@ const newer=(a,b)=>recency(a)[0].localeCompare(recency(b)[0])||recency(a)[1]-rec
 
 export function suggestCoverageDeck(characterId,analysis,catalog,{alreadyCovered=new Set(),scenario='support',options:cachedOptions}={}) {
   const targets=farmingTargets(analysis),parent=analysis.index.characters.get(characterId);
-  const fixed=catalog.supports.find(s=>s.id===FIXED_SUPPORT_ID),limit=fixed?5:6;
+  const fixed=catalog.supports.find(s=>s.id===farmingFixedSupportId(scenario)),limit=fixed?5:6;
   const targetIds=new Set(targets.map(r=>r.skillId));
   const options=(cachedOptions??catalog.supports.flatMap(s=>supportOptions(s,analysis.index))).filter(o=>o.support.characterId!==parent?.characterId&&o.support.characterId!==fixed?.characterId)
     .map(o=>({...o,ids:optionIds(o).filter(id=>targetIds.has(id))})).filter(o=>o.ids.length);

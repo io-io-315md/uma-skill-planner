@@ -14,6 +14,7 @@ import { MAIN_DECK_GUIDE } from './main-deck-data.js';
 import { applyMainDeck, changeMainConditions } from './main-deck.js';
 import { loadLiveData, applyLiveData } from './live-data.js';
 import { planLineageRotations, exportRotation } from './race-planner.js';
+import {scenarioChoiceHTML} from './scenario-ui.js';
 
 const $ = id => document.getElementById(id);
 const escape = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -66,6 +67,7 @@ function renderCourses() {
   $('course-banner').innerHTML = c.confirmed ? `<div><p class="banner-caption">${c.year}.${c.month} <span aria-hidden="true">/</span> ${escape(c.title)}</p><div class="banner-title"><h2>${c.venue}</h2><strong>${c.distance.toLocaleString()}<small>m</small></strong><span class="condition">${c.surface}・${c.distanceType}</span></div><div class="banner-conditions">${[c.turn,c.season,c.weather === 'ランダム' ? '天候ランダム' : c.weather,c.going === 'ランダム' ? 'バ場ランダム' : c.going,c.time,`${c.runners}人立て`].map(v => `<span class="condition">${escape(v)}</span>`).join('')}</div></div><div class="banner-aside"><p>${escape(c.summary)}</p><a href="${SOURCES.official.url}" target="_blank" rel="noopener noreferrer">公式の開催条件を見る ↗</a></div>` : `<div><p class="banner-caption">${c.year}.${c.month} / ${escape(c.date)}</p><div class="banner-title"><h2>コース詳細の発表待ち</h2></div><div class="banner-conditions"><span class="condition">${c.type}</span><span class="condition">${c.surface}・${c.distanceType}</span>${c.rule ? `<span class="condition">${c.rule}</span>` : ''}</div></div><div class="banner-aside"><p>競馬場・距離が未発表のため、コース別スキルの推奨は保留しています。</p><a href="${SOURCES.official.url}" target="_blank" rel="noopener noreferrer">公式スケジュール ↗</a></div>`;
 }
 function renderSetup() {
+  $('scenario-choice').innerHTML=scenarioChoiceHTML(state,analysis.index,{course:analysis.course});
   const char = analysis.index.characters.get(state.characterId);
   $('character-label').innerHTML = char ? `${artwork(char)}<span>${escape(char.name)}</span>` : 'ウマ娘を選択';
   const aptitude=char?.aptitude,styleIndex=STYLES.indexOf(state.style)+6;
@@ -79,12 +81,12 @@ function renderSetup() {
   $('live-data-state').textContent=refreshing?'更新データを確認中…':`${liveSource==='network'?'公開データ取得済み':liveSource==='cache'?'更新できないため前回のデータ':'同梱データを使用'} / ${MAIN_DECK_GUIDE.verifiedAt.replaceAll('-','.')}`;
   $('refresh-data').disabled=refreshing;
   $('data-edition').textContent=`編成・開催 ${MAIN_DECK_GUIDE.verifiedAt.replaceAll('-','.')} / DB ${catalog.retrievedAt.replaceAll('-','.')}`;
-  $('main-deck-sources').innerHTML=(state.mainDeck.sourceIds.length?state.mainDeck.sourceIds:['novemberDecks','decemberDecks']).filter(id=>SOURCES[id]).map(id=>`<a href="${escape(SOURCES[id].url)}" target="_blank" rel="noopener noreferrer">${escape(SOURCES[id].name)} ↗</a>`).join('');
+  $('main-deck-sources').innerHTML='<p>'+escape(MAIN_DECK_GUIDE.policy)+'</p>'+ (state.mainDeck.sourceIds.length?state.mainDeck.sourceIds:['shuntaisaiDecks','mayanoNote','scenarioNote']).filter(id=>SOURCES[id]).map(id=>`<a href="${escape(SOURCES[id].url)}" target="_blank" rel="noopener noreferrer">${escape(SOURCES[id].name)} ↗</a>`).join('');
   $('support-slots').innerHTML=state.supports.map((id,i)=>{
     const support=analysis.index.supports.get(id);
     const goldRoles=support?[...acquisitionRoutes({...state,characterId:null,supports:[id]},analysis.index)].filter(([id,routes])=>analysis.index.skills.get(id)?.rarity===2&&skillMatchesRace(analysis.index.skills.get(id),analysis.course,state.style)&&routes.some(r=>r.kind!=='event-unverified')).map(([id])=>analysis.index.skills.get(id).name):[];
     const fixed=i===FIXED_SUPPORT_SLOT,tag=fixed?'div':'button';
-    return `<div class="support-slot ${fixed?'fixed-support-slot':''}"><div class="support-slot-main"><span class="slot-number">${String(i+1).padStart(2,'0')}</span><${tag} class="slot-select visual-slot-select" ${fixed?'role="group" aria-label="サポート6：SSRたづな固定"':`data-slot="${i}" aria-label="サポート${i+1}を選択"`}>${support?`${artwork(support)}<span class="slot-copy">${fixed?'<span class="slot-assignment fixed-assignment">固定</span>':''}<span class="slot-title">${escape(support.title)}</span><strong>${escape(support.characterName)}</strong><small>${TYPE_LABELS[support.type]}・${support.rarity}</small></span>`:`<span class="empty-slot-art">＋</span><span><strong class="empty-title">サポートを選択</strong></span>`}</${tag}>${support&&!fixed?`<button class="remove-support" data-remove="${i}" aria-label="サポート${i+1}を外す">×</button>`:''}</div>${goldRoles.length?`<p class="main-card-role">金スキル候補：${goldRoles.map(escape).join(' / ')}</p>`:''}${(support?.events??[]).filter(e=>e.selection==='single').map(event=>{
+    return `<div class="support-slot ${fixed?'fixed-support-slot':''}"><div class="support-slot-main"><span class="slot-number">${String(i+1).padStart(2,'0')}</span><${tag} class="slot-select visual-slot-select" ${fixed?'role="group" aria-label="サポート6：SSR吾妻固定"':`data-slot="${i}" aria-label="サポート${i+1}を選択"`}>${support?`${artwork(support)}<span class="slot-copy">${fixed?'<span class="slot-assignment fixed-assignment">固定</span>':''}<span class="slot-title">${escape(support.title)}</span><strong>${escape(support.characterName)}</strong><small>${TYPE_LABELS[support.type]}・${support.rarity}</small></span>`:`<span class="empty-slot-art">＋</span><span><strong class="empty-title">サポートを選択</strong></span>`}</${tag}>${support&&!fixed?`<button class="remove-support" data-remove="${i}" aria-label="サポート${i+1}を外す">×</button>`:''}</div>${goldRoles.length?`<p class="main-card-role">金スキル候補：${goldRoles.map(escape).join(' / ')}</p>`:''}${(support?.events??[]).filter(e=>e.selection==='single').map(event=>{
       const choices=eventChoicesForPurpose(event,analysis.index,'main');
       const chosen=resolvedEventChoice(event,state,analysis.index,'main');
       const explicit=choices.some(c=>c.id===state.eventChoices[event.id]);
@@ -240,7 +242,8 @@ document.addEventListener('click', event => {
 document.addEventListener('change', event => {
   if (!catalog) return;
   const target=event.target;
-  if(target.dataset.event)update({eventChoices:{...state.eventChoices,[target.dataset.event]:target.value}});
+  if(target.dataset.scenarioChoice!==undefined)update({scenarioChoice:target.value});
+  else if(target.dataset.event)update({eventChoices:{...state.eventChoices,[target.dataset.event]:target.value}});
   else if(target.dataset.prepared)update({prepared:toggle(state.prepared,target.dataset.prepared)});
 });
 $('character-picker').addEventListener('click',()=>openPicker('character'));
@@ -252,7 +255,7 @@ $('show-excluded').addEventListener('change',e=>{showExcluded=e.target.checked;r
 $('close-picker').addEventListener('click',()=>$('picker-dialog').close());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());
 for(const id of ['sources-button','footer-sources'])$(id).addEventListener('click',showSources);
-$('help-button').addEventListener('click',()=>openInfo('使い方', '<h3>1. コースと育成条件を選ぶ</h3><p>上の開催予定からコースを選び、育成する衣装・作戦を設定します。</p><h3>2. 自動編成を確認する</h3><p>キャラ・脚質・レースを選ぶと推奨編成をセットします。自前の覚醒と併用制限を反映し、6枠目はSSRたづなで固定。各枠は手動変更でき、「推奨に戻す」で再設定できます。金スキルを優先し、金と引き換えになる白スキル択は本育成の取得経路に含めません。</p><h3>3. 継承・因子の準備を確認する</h3><p>「必要な継承・白因子」で、編成にない白スキルと継承元を確認します。因子名をタップすると、因子周回のキャラ・サポート編成・イベント択・優先スキルを別に設定できます。シナリオ等で取れるものは「別ルートで取得」、不要な加速などは「今回は見送る」に設定できます。</p><h3>4. 保存する</h3><p>準備できたものにチェックし、リストをコピー。複数プランの保存とJSONでの持ち運びもできます。スマートフォンはブラウザーの「ホーム画面に追加」からアプリとして使えます。</p>'));
+$('help-button').addEventListener('click',()=>openInfo('使い方', '<h3>1. コースと育成条件を選ぶ</h3><p>上の開催予定からコースを選び、育成する衣装・作戦を設定します。</p><h3>2. 自動編成を確認する</h3><p>キャラ・脚質・レースを選ぶと推奨編成をセットします。自前の覚醒と併用制限を反映し、駿大祭の6枠目はSSR吾妻で固定。各枠は手動変更でき、「推奨に戻す」で再設定できます。金スキルを優先し、金と引き換えになる白スキル択は本育成の取得経路に含めません。</p><h3>3. 継承・因子の準備を確認する</h3><p>「必要な継承・白因子」で、編成にない白スキルと継承元を確認します。因子名をタップすると、因子周回のキャラ・サポート編成・イベント択・優先スキルを別に設定できます。シナリオ等で取れるものは「別ルートで取得」、不要な加速などは「今回は見送る」に設定できます。</p><h3>4. 保存する</h3><p>準備できたものにチェックし、リストをコピー。複数プランの保存とJSONでの持ち運びもできます。スマートフォンはブラウザーの「ホーム画面に追加」からアプリとして使えます。</p>'));
 $('copy-checklist').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(checklistText());toast('チェックリストをコピーしました。');}catch{download('umaplan-checklist.txt',checklistText());toast('コピーできなかったため、テキストで保存しました。');}});
 $('download-checklist').addEventListener('click',()=>download('umaplan-checklist.txt',checklistText()));
 $('save-plan').addEventListener('click',()=>{const char=analysis.index.characters.get(state.characterId);const {plans,...snapshot}=state;const label=`${analysis.course.month}月 ${analysis.course.venue??'未定'} / ${char?.characterName??'キャラ未選択'} / ${state.style}`;update({plans:[{label,state:snapshot},...plans].slice(0,20)});toast('プランを保存しました（最大20件）。');});

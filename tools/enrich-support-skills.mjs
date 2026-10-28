@@ -2,17 +2,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseSkillTargets} from '../dist/support-usage.js';
+import {SCENARIO_SKILL_OPTIONS} from '../dist/scenario-skills.js';
 
 export function enrichSupportSkills(catalog,rawSkills) {
   const raw=new Map(rawSkills.map(s=>[s.id,s]));
   const needed=new Set(catalog.supports.flatMap(s=>[...s.hintSkills,...s.eventSkills,...s.events.flatMap(e=>[...e.skills,...e.choices.flatMap(c=>c.skills)])]));
+  const scenarioNames=new Set([...SCENARIO_SKILL_OPTIONS.flatMap(o=>[o.gold,o.white]),'全身全霊','ハヤテ一文字','機先の勝負','名にし負う夢']);
+  for(const skill of catalog.skills)if(scenarioNames.has(skill.name))needed.add(skill.id);
   for(const skill of catalog.skills)if(needed.has(skill.id)){
     const description=raw.get(skill.id)?.jpdesc;
     if(!description)throw new Error('Missing support skill description: '+skill.id);
     skill.description=description;
     skill.targets=parseSkillTargets(description);
   }
-  catalog.supportUsageVerifiedAt='2026-10-19';
+  catalog.supportUsageVerifiedAt=catalog.retrievedAt;
   return needed.size;
 }
 

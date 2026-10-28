@@ -4,6 +4,7 @@ import { normalizeMainSupports, normalizeFarmingSupports, FIXED_SUPPORT_ID, FIXE
 import { RED_FACTORS, redFactorDetails } from './factor-targets.js';
 import { skillMatchesRace } from './support-usage.js';
 import { FARMING_POLICY, INHERITED_FACTOR_NOTE, usesInheritedFactor } from './farming-policy.js';
+import {SCENARIO_SKILL_OPTIONS,scenarioAcquisition} from './scenario-skills.js';
 export { PRIORITIES } from './priorities.js';
 
 export const TYPE_LABELS = { speed: 'スピード', stamina: 'スタミナ', power: 'パワー', guts: '根性', wit: '賢さ', friend: '友人', group: 'グループ' };
@@ -14,14 +15,15 @@ export function normalizeFarmingProfile(raw, catalog) {
   const char=catalog.characters.find(c=>c.id===Number(profile.characterId));
   return {
     characterId:char?.id??null,
-    supports:normalizeFarmingSupports(profile.supports,catalog,char?.characterId),
+    supports:normalizeFarmingSupports(profile.supports,catalog,char?.characterId,profile.scenario),
     redFactor:RED_FACTORS.includes(profile.redFactor?.type)?{type:profile.redFactor.type,stars:[1,2,3].includes(profile.redFactor.stars)?profile.redFactor.stars:3}:null,
     raceGoalChoices:profile.raceGoalChoices&&typeof profile.raceGoalChoices==='object'&&!Array.isArray(profile.raceGoalChoices)?Object.fromEntries(Object.entries(profile.raceGoalChoices).filter(([key,value])=>/^\d{1,2}$/.test(key)&&Number.isInteger(value)&&value>=0&&value<10)):{},
     eventChoices:profile.eventChoices&&typeof profile.eventChoices==='object'&&!Array.isArray(profile.eventChoices)?Object.fromEntries(Object.entries(profile.eventChoices).filter(([k,v])=>k.startsWith('evt_')&&typeof v==='string')):{},
     learned:Array.isArray(profile.learned)?[...new Set(profile.learned.filter(s=>typeof s==='string'))]:[],
     anchorSupportId:catalog.supports.some(s=>s.id===Number(profile.anchorSupportId))?Number(profile.anchorSupportId):null,
     farmingPolicy:profile.farmingPolicy===FARMING_POLICY?FARMING_POLICY:'',
-    scenario:profile.scenario==='ura'?'ura':'support'
+    scenarioChoice:SCENARIO_SKILL_OPTIONS.some(o=>o.id===profile.scenarioChoice)?profile.scenarioChoice:'auto',
+    scenario:['ura','tracen'].includes(profile.scenario)?profile.scenario:'support'
   };
 }
 
@@ -47,6 +49,7 @@ export function normalizeState(raw, catalog) {
   const char = catalog.characters.find(c => c.id === state.characterId);
   state.awakening = char ? char.awakening.length + 1 : 5;
   state.supports=normalizeMainSupports(state.supports,catalog,char?.characterId);
+  state.scenarioChoice=SCENARIO_SKILL_OPTIONS.some(o=>o.id===state.scenarioChoice)?state.scenarioChoice:'auto';
   for (const key of ['supplied','prepared','excluded']) state[key] = Array.isArray(state[key]) ? [...new Set(state[key].filter(x => typeof x === 'string'))] : [];
   if (!state.eventChoices || typeof state.eventChoices !== 'object' || Array.isArray(state.eventChoices)) state.eventChoices = {};
   const eventIndex=createIndex(catalog);
@@ -122,6 +125,7 @@ export function acquisitionRoutes(state, index, purpose='main') {
       } else event.skills.forEach(skill => add(skill, { kind: 'event', label: `${label}のイベント（発生・完走等の条件あり）` }));
     }
   }
+  for(const route of scenarioAcquisition(state,index,{purpose,course:COURSES.find(c=>c.id===state.courseId)}))add(route.skillId,{kind:route.kind,label:route.label});
   return routes;
 }
 

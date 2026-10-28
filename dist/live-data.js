@@ -1,6 +1,7 @@
 import { COURSES, RECOMMENDATIONS, SOURCES, STYLES, LIVE_METADATA } from './recommendations.js';
 import { MAIN_DECK_GUIDE } from './main-deck-data.js';
 import { PRIORITY_RULES } from './priorities.js';
+import {FIXED_SUPPORT_ID} from './deck-rules.js';
 
 const validDate=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s));
 const demand=(ok,label)=>{if(!ok)throw new Error(`Invalid planner data: ${label}`);};
@@ -22,8 +23,11 @@ export function validateLiveData(raw,catalog){
   for(const [name,r]of Object.entries(raw.priorityRules))demand(skills.has(name)&&[1,2,3].includes(r.priority)&&typeof r.reason==='string'&&(!r.byCourse||Object.entries(r.byCourse).every(([id,p])=>ids.has(id)&&[1,2,3].includes(p))),'priority');
   const guide=raw.mainDeckGuide;
   demand(guide&&validDate(guide.verifiedAt)&&typeof guide.revision==='string'&&typeof guide.scenario==='string'&&Array.isArray(guide.events)&&guide.pools&&typeof guide.pools==='object','deck guide');
+  demand(guide.fixedSupportId===FIXED_SUPPORT_ID&&cards.get(guide.fixedSupportId)?.rarity==='SSR'&&cards.get(guide.fixedSupportId)?.type==='friend','scenario friend');
+  const validDeck=list=>Array.isArray(list)&&list.length===5&&list.every(id=>cards.get(id)?.rarity==='SSR'&&!['friend','group'].includes(cards.get(id).type))&&new Set(list.map(id=>cards.get(id).characterId)).size===5&&new Set(list.map(id=>cards.get(id).type)).size===4;
+  demand(guide.defaults&&STYLES.every(style=>validDeck(guide.defaults[style]))&&typeof guide.policy==='string','scenario defaults');
   for(const [type,list]of Object.entries(guide.pools)){demand(['speed','stamina','power','guts','wit'].includes(type)&&Array.isArray(list)&&list.length>0&&list.length<=30,'pool');for(const id of list)demand(cards.get(id)?.type===type&&cards.get(id)?.rarity==='SSR','pool card');}
-  for(const event of guide.events){demand(ids.has(event.courseId)&&Array.isArray(event.sourceIds)&&event.sourceIds.every(id=>Object.hasOwn(raw.sources,id)),'deck source');for(const style of STYLES){const list=event.decks?.[style];demand(Array.isArray(list)&&list.length===5&&list.every(id=>cards.get(id)?.rarity==='SSR'&&!['friend','group'].includes(cards.get(id).type))&&new Set(list.map(id=>cards.get(id).characterId)).size===5,'deck cards');}}
+  for(const event of guide.events){demand(ids.has(event.courseId)&&Array.isArray(event.sourceIds)&&event.sourceIds.every(id=>Object.hasOwn(raw.sources,id)),'deck source');for(const style of STYLES)demand(validDeck(event.decks?.[style]),'deck cards');}
   return structuredClone(raw);
 }
 export function applyLiveData(data){

@@ -14,7 +14,7 @@ test('11月は秋、3000m回復を表示し、12月は冬・晴・良に切り�
   assert.ok(!row(dec,'超長距離回復○'));assert.ok(!row(dec,'登山家'));
 });
 test('未発表コースでは推奨と不足件数を出さない',()=>{
-  for(const id of ['2027-01-cm','2027-02-loh','2027-03-cm']){const a=analyze(make({courseId:id}),catalog);assert.equal(a.rows.length,0);assert.equal(a.counts.factor,0);}
+  for(const id of ['2027-02-loh','2027-03-cm','2027-04-cm']){const a=analyze(make({courseId:id}),catalog);assert.equal(a.rows.length,0);assert.equal(a.counts.factor,0);}
 });
 test('先行と追込の加速を混ぜない',()=>{
   assert.ok(row(analyze(make({style:'先行'}),catalog),'勇気の一歩'));
@@ -67,7 +67,7 @@ test('別経路・見送り・準備チェックを出力に反映する',()=>{
 });
 test('不正な保存値と未対応IDを補正する',()=>{
   const state=make({courseId:'bad',style:'大逃げ',characterId:999,supports:[999],eventChoices:null,awakening:99,prepared:'bad',plans:[null,{label:'x',state:{}},'bad']});
-  assert.equal(state.courseId,'2026-11-loh');assert.equal(state.style,'先行');assert.equal(state.characterId,null);assert.equal(state.awakening,5);assert.deepEqual(state.supports,[null,null,null,null,null,30305]);assert.deepEqual(state.prepared,[]);assert.equal(state.plans.length,1);
+  assert.equal(state.courseId,'2026-11-loh');assert.equal(state.style,'先行');assert.equal(state.characterId,null);assert.equal(state.awakening,5);assert.deepEqual(state.supports,[null,null,null,null,null,30323]);assert.deepEqual(state.prepared,[]);assert.equal(state.plans.length,1);
 });
 test('覚醒Lv6/7と旧カードを扱える',()=>{
   assert.equal(make({characterId:100101,awakening:1}).awakening,7);

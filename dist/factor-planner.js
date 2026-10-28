@@ -1,5 +1,5 @@
 import { acquisitionRoutes, lowerClosure, normalizeFarmingProfile } from './engine.js';
-import { FIXED_SUPPORT_ID } from './deck-rules.js';
+import { farmingFixedSupportId } from './deck-rules.js';
 import { defaultRedFactor } from './factor-targets.js';
 import { FARMING_POLICY, usesInheritedFactor } from './farming-policy.js';
 
@@ -72,11 +72,12 @@ export function suggestFactorPlan(state,analysis,focus,catalog,options={}) {
   const preferred=analysis.index.characters.get(Number(options.characterId));
   const characterId=focus.inherited?focus.ownerId:preferred&&preferred.characterId!==own?preferred.id:chooseParent(state,analysis,focus,catalog,options.anchorSupportId);
   const parent=analysis.index.characters.get(characterId);
-  const fixed=catalog.supports.find(s=>s.id===FIXED_SUPPORT_ID),limit=fixed?5:6;
-  const targets=farmingTargets(analysis,focus);
-  const allOptions=catalog.supports.filter(s=>s.characterId!==parent?.characterId&&s.characterId!==fixed?.characterId).map(s=>supportOptions(s,analysis.index));
   const sources=candidateSources(analysis,focus,catalog,characterId);
   const anchor=options.anchorSupportId?sources.find(s=>s.support.id===Number(options.anchorSupportId)):usesInheritedFactor(focus)?null:sources[0];
+  const scenario=options.scenario??(!usesInheritedFactor(focus)&&!anchor&&URA_METHODS[focus.name]?'ura':'support');
+  const fixed=catalog.supports.find(s=>s.id===farmingFixedSupportId(scenario)),limit=fixed?5:6;
+  const targets=farmingTargets(analysis,focus);
+  const allOptions=catalog.supports.filter(s=>s.characterId!==parent?.characterId&&s.characterId!==fixed?.characterId).map(s=>supportOptions(s,analysis.index));
   const chosen=[],usedCharacters=new Set(),types=new Map(),covered=new Set();
   const native=acquisitionRoutes({characterId,supports:fixed?[fixed.id]:[],eventChoices:{}},analysis.index,'factor');
   for(const id of native.keys())covered.add(id);
@@ -93,7 +94,7 @@ export function suggestFactorPlan(state,analysis,focus,catalog,options={}) {
     if(!next||coverageScore(next,targets,focus,covered)<=0)break;
     add(next);
   }
-  return normalizeFarmingProfile({characterId,supports:[...Array.from({length:limit},(_,i)=>chosen[i]?.support.id??null),...(fixed?[fixed.id]:[])],redFactor:defaultRedFactor(analysis),eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),anchorSupportId:selectedAnchor?.support.id,scenario:options.scenario??(!usesInheritedFactor(focus)&&!anchor&&URA_METHODS[focus.name]?'ura':'support'),farmingPolicy:FARMING_POLICY},catalog);
+  return normalizeFarmingProfile({characterId,supports:[...Array.from({length:limit},(_,i)=>chosen[i]?.support.id??null),...(fixed?[fixed.id]:[])],redFactor:defaultRedFactor(analysis),eventChoices:Object.assign({},...chosen.map(o=>o.eventChoices)),anchorSupportId:selectedAnchor?.support.id,scenario,farmingPolicy:FARMING_POLICY},catalog);
 }
 
 // Upgrade old saved decks once. Retain manual cards with any other target role,

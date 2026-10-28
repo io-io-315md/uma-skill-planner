@@ -8,14 +8,14 @@
   <title>UMAPLAN｜コース別スキル・因子プランナー</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./style.css?v=1.9.1">
-  <link rel="stylesheet" href="./layout.css?v=1.9.1">
-  <link rel="stylesheet" href="./factor.css?v=1.9.1">
-  <link rel="stylesheet" href="./tier.css?v=1.9.1">
-  <link rel="stylesheet" href="./support.css?v=1.9.1">
-  <link rel="stylesheet" href="./lineage.css?v=1.9.1">
-  <link rel="stylesheet" href="./race.css?v=1.9.1">
-  <script type="module" src="./app.js?v=1.9.1"></script>
+  <link rel="stylesheet" href="./style.css?v=1.10.0">
+  <link rel="stylesheet" href="./layout.css?v=1.10.0">
+  <link rel="stylesheet" href="./factor.css?v=1.10.0">
+  <link rel="stylesheet" href="./tier.css?v=1.10.0">
+  <link rel="stylesheet" href="./support.css?v=1.10.0">
+  <link rel="stylesheet" href="./lineage.css?v=1.10.0">
+  <link rel="stylesheet" href="./race.css?v=1.10.0">
+  <script type="module" src="./app.js?v=1.10.0"></script>
 </head>
 <body>
   <a class="skip-link" href="#results">取得候補へ移動</a>
@@ -34,7 +34,7 @@
           <label class="field-label" for="character-picker">育成ウマ娘 <span>衣装ごとに選択</span></label><button class="picker-button" id="character-picker"><span id="character-label">ウマ娘を選択</span><span aria-hidden="true">⌄</span></button><div id="character-note" class="field-note">キャラを選ぶと、自前の取得スキルを照合します。</div>
           <p class="field-label">作戦</p><div class="style-buttons" id="style-buttons" aria-label="作戦"></div>
         </section>
-        <section class="panel support-panel"><div class="panel-heading"><span class="step">02</span><h2>本育成のサポカ</h2><span id="support-count" class="count-label">1 / 6</span></div><div class="main-deck-toolbar"><span id="main-deck-mode" class="main-deck-mode">自動編成</span><button class="small-button" id="main-deck-apply">推奨に戻す</button></div><p id="main-deck-note" class="panel-intro"></p><div class="live-data-status"><span id="live-data-state" role="status" aria-live="polite">更新データを確認中</span><button class="text-button" id="refresh-data">最新情報を更新 ↻</button></div><div id="support-slots" class="support-slots"></div><details class="main-deck-basis"><summary>編成の基準・出典</summary><p>公開されている現シナリオの編成例を基に、金スキルの対象と自前覚醒を照合。主加速と育成用の構成を優先します。キャラ・脚質・レース変更時とページを開いたときに再編成し、その後は各枠を変更できます。</p><p>所持・凸数・育成結果の比較は未評価。新シナリオ実装前の暫定編成を含みます。</p><div id="main-deck-sources"></div></details><p class="micro-note">6枠目はSSRたづな固定。</p></section>
+        <section class="panel support-panel"><div class="panel-heading"><span class="step">02</span><h2>本育成のサポカ</h2><span id="support-count" class="count-label">1 / 6</span></div><div class="main-deck-toolbar"><span id="main-deck-mode" class="main-deck-mode">自動編成</span><button class="small-button" id="main-deck-apply">推奨に戻す</button></div><p id="main-deck-note" class="panel-intro"></p><div class="live-data-status"><span id="live-data-state" role="status" aria-live="polite">更新データを確認中</span><button class="text-button" id="refresh-data">最新情報を更新 ↻</button></div><div id="support-slots" class="support-slots"></div><div id="scenario-choice"></div><details class="main-deck-basis"><summary>編成の基準・出典</summary><p>公開されている現シナリオの編成例を基に、金スキルの対象と自前覚醒を照合。主加速と育成用の構成を優先します。キャラ・脚質・レース変更時とページを開いたときに再編成し、その後は各枠を変更できます。</p><p>所持・凸数・育成結果の比較は未評価。駿大祭実装後の情報と、距離・脚質に合う取得スキルを照合した初期案です。</p><div id="main-deck-sources"></div></details><p class="micro-note">6枠目はSSR吾妻固定。</p></section>
         <section class="panel saved-panel"><div class="panel-heading"><span class="step">03</span><h2>プランを残す</h2></div><div class="plan-buttons"><button class="outline-button" id="save-plan">プランを保存</button><button class="outline-button" id="export-json">JSON書き出し</button></div><div class="saved-plans" id="saved-plans"></div><div class="inline-actions"><button class="text-button" id="import-json">JSON読み込み</button><button class="text-button muted" id="reset-plan">編成をリセット</button></div><input id="json-file" type="file" accept="application/json,.json" hidden></section>
         <p class="sidebar-footnote">非公式ファンツール<br>スキルの優先度は攻略資料を参考にした目安です。</p>
       </aside>

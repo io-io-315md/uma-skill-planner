@@ -1,12 +1,16 @@
-export const VERIFIED_AT = '2026-10-18';
+export const VERIFIED_AT = '2026-10-28';
 export const LIVE_METADATA = {verifiedAt:VERIFIED_AT};
 export const SOURCES = {
-  official: { name: 'Cygames｜10月〜3月 対戦レースイベント', url: 'https://dmg.umamusume.jp/news/detail/?id=3483', kind: '公式発表' },
+  official: { name: 'Cygames｜11月〜4月 対戦レースイベント', url: 'https://x.com/uma_musu/status/2114557891835511008', kind: '2026年10月26日・公式発表' },
   november: { name: 'ウマ娘ラボ｜2026年11月 京都3000m', url: 'https://umamusumelabo.com/event/loh/loh-kyoto3000-202611', kind: '攻略・評価' },
   november2: { name: '神ゲー攻略｜11月LoH攻略', url: 'https://kamigame.jp/umamusume/page/438640407664972073.html', kind: '攻略・評価' },
   december: { name: 'GameWith｜2026年12月 チャンミ長距離', url: 'https://gamewith.jp/uma-musume/article/show/578925', kind: '攻略・評価' },
   december2: { name: '神ゲー攻略｜12月チャンミ攻略', url: 'https://kamigame.jp/umamusume/page/443708416242747935.html', kind: '攻略・評価' },
   database: { name: 'GameTora｜スキル・育成キャラ・サポートDB', url: 'https://gametora.com/ja/umamusume', kind: '非公式データベース' },
+  mayanoNew: { name:'GameTora｜パワーマヤノのスキル・金3択',url:'https://gametora.com/ja/umamusume/supports/30322-mayano-top-gun',kind:'2026年10月28日照合・日本版データ' },
+  mayanoPublicNote: { name:'れい｜パワーマヤノの公開評価',url:'https://note.com/umamusume_sui/n/ne9c02b44875e',kind:'2026年10月26日・note' },
+  azumaNew: { name:'GameTora｜吾妻の取得スキル',url:'https://gametora.com/ja/umamusume/supports/30323-azuma',kind:'2026年10月28日照合・日本版データ' },
+  shuntaisaiSkills: { name:'神ゲー攻略｜駿大祭の金スキルと条件',url:'https://kamigame.jp/umamusume/page/445590736528778652.html',kind:'2026年10月26日更新・シナリオの取得条件' },
   events: { name: 'Tsuyuchan-jp｜イベント選択肢データ', url: 'https://github.com/Tsuyuchan-jp/umamusume-data', kind: '非公式データ' },
   inheritance: { name: 'GameWith｜継承進化スキル', url: 'https://gamewith.jp/uma-musume/article/show/574331', kind: '継承条件' },
   renmen: { name: 'U-tools｜連綿', url: 'https://xn--gck1f423k.xn--1bvt37a.tools/skills/204622', kind: 'スキル条件' },
@@ -24,11 +28,12 @@ export const SOURCES = {
 };
 
 export const COURSES = [
-  { id: '2026-11-loh', month: '11', year: '2026', date: '11月下旬', type: 'LoH', title: 'リーグ オブ ヒーローズ', venue: '京都', surface: '芝', distance: 3000, distanceType: '長距離', turn: '右・外', season: '秋', weather: 'ランダム', going: 'ランダム', time: '昼', runners: 12, confirmed: true, source: 'november', summary: '直線での終盤加速を軸に、12人立ての順位条件を確認。天候・バ場は固定しない。', caution: 'コーナーで発動する終盤加速は遅れやすく、直線のラストスパート加速を先に検討します。' },
+  { id: '2026-11-loh', month: '11', year: '2026', date: '11月22日〜', type: 'LoH', title: 'リーグ オブ ヒーローズ', venue: '京都', surface: '芝', distance: 3000, distanceType: '長距離', turn: '右・外', season: '秋', weather: 'ランダム', going: 'ランダム', time: '昼', runners: 12, confirmed: true, source: 'november', summary: '直線での終盤加速を軸に、12人立ての順位条件を確認。天候・バ場は固定しない。', caution: 'コーナーで発動する終盤加速は遅れやすく、直線のラストスパート加速を先に検討します。' },
   { id: '2026-12-cm', month: '12', year: '2026', date: '12月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング LONG', venue: '中山', surface: '芝', distance: 2500, distanceType: '長距離', turn: '右・内', season: '冬', weather: '晴', going: '良', time: '昼', runners: 9, confirmed: true, source: 'december', summary: '冬・晴・良の固定条件。直線の終盤加速と、残り400m付近の速度を整理。', caution: '超長距離回復は3000m以上限定で対象外。コーナー加速は有効ですが、最速加速より優先度を下げて検討します。' },
-  { id: '2027-01-cm', month: '01', year: '2027', date: '1月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング CLASSIC', surface: '芝', distanceType: '中距離', confirmed: false },
+  { id: '2027-01-cm', month: '01', year: '2027', date: '1月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング CLASSIC',venue:'東京',surface:'芝',distance:2400,distanceType:'中距離',turn:'左',season:'冬',weather:'晴',going:'良',time:'昼',runners:9,confirmed:true,source:'official',basicOnly:true,summary:'発表済みの左・冬・晴・良と、汎用・中距離スキルを掲載。主加速と継承の比較評価は確認中。' },
   { id: '2027-02-loh', month: '02', year: '2027', date: '2月中旬', type: 'LoH', title: 'リーグ オブ ヒーローズ', surface: 'ダート', distanceType: '中距離', confirmed: false },
-  { id: '2027-03-cm', month: '03', year: '2027', date: '3月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング MILE', surface: '芝', distanceType: 'マイル', confirmed: false, rule: 'デバフなし' }
+  { id: '2027-03-cm', month: '03', year: '2027', date: '3月下旬', type: 'チャンミ', title: 'チャンピオンズミーティング MILE', surface: '芝', distanceType: 'マイル', confirmed: false, rule: 'デバフなし' },
+  { id: '2027-04-cm', month:'04',year:'2027',date:'4月下旬',type:'チャンミ',title:'チャンピオンズミーティング CLASSIC',surface:'芝',distanceType:'中距離',confirmed:false }
 ];
 export const STYLES = ['逃げ', '先行', '差し', '追込'];
 export const CATEGORIES = ['加速', '速度', '緑スキル', '回復', '継承', '位置取り'];
@@ -38,6 +43,16 @@ const inherited = (name, priority, reason, options = {}) => rec(name, '継承', 
 
 // 優先度は資料をもとにした編集上の分類。勝率や効果量の計算結果ではない。
 export const RECOMMENDATIONS = [
+  ...['左回り○','冬ウマ娘○','良バ場○','晴れの日○','東京レース場○','根幹距離○'].map((name,i)=>rec(name,'緑スキル',i<2?1:i===2?2:3,'2027年1月の東京芝2400m・左・冬・晴・良の発表条件に一致。基本スキルとして掲載。',{courses:['2027-01-cm'],sources:['official','database']})),
+  rec('如才なし','速度',2,'中距離の後半で追い抜こうとするか近寄られる条件。マヤノでは英俊豪傑と機転の組み合わせを選ぶ。',{courses:['2027-01-cm'],gold:'機転',sources:['mayanoNew','mayanoPublicNote']}),
+  rec('比類なき','速度',2,'中盤の現在速度を補う汎用候補。マヤノの金スキル「英俊豪傑」から下位白もカバーできる。',{gold:'英俊豪傑',sources:['mayanoNew','mayanoPublicNote']}),
+  rec('直感力','速度',2,'長距離の序盤・中盤で追い抜かれるか競り合う条件。後方運用では条件を満たす展開か確認する。',{gold:'希代の才覚',conditionLabel:'追い抜かれるか競り合う',sources:['mayanoNew','mayanoPublicNote']}),
+  rec('死力を尽くして','速度',2,'長距離の全開スパート中に発動する候補。マヤノの所持ヒントで取れる場合は因子の準備を省ける。',{conditionLabel:'全開スパート中',sources:['mayanoNew','mayanoPublicNote']}),
+  rec('気持ちを乗せて','速度',2,'終盤が迫った時点で前方にいる条件。マヤノを編成した駿大祭では、シナリオ択の順風満帆も取得候補。',{styles:['逃げ','先行'],gold:'順風満帆',conditionLabel:'終盤目前に前方',sources:['mayanoNew','shuntaisaiSkills']}),
+  rec('主導権','速度',2,'中盤が迫った時点で前方にいる条件。後方脚質へ一律には推奨しない。長距離のマヤノ金択とは別に、所持ヒントで取れる白スキル。',{styles:['逃げ','先行'],gold:'アドバンテージ',conditionLabel:'序盤後半に前方',sources:['mayanoNew','mayanoPublicNote']}),
+  rec('快速','速度',2,'後半の現在速度と小回復を補う。吾妻のお出かけ5回目を完了する場合は、神速から下位白もカバーできる。',{gold:'神速',sources:['azumaNew','database']}),
+  rec('弧を描いて','速度',2,'コーナーで発動する汎用候補。吾妻のイベント白択、または駿大祭で吾妻を選ぶシナリオ択から取れる。',{gold:'螺旋のエキスパート',sources:['azumaNew','shuntaisaiSkills']}),
+  rec('序盤巧者','速度',2,'序盤後半の汎用速度。駿大祭で全演目の大成功を達成する場合は、機先の勝負から下位白もカバーできる。',{gold:'機先の勝負',sources:['shuntaisaiSkills','database']}),
   rec('レースの真髄・体', '速度', 1, 'ラストスパート最終盤で持久力を2%使い、速度を上げる。発動時に持久力2%以上が必要。', { conditionLabel: '持久力確保前提', sources: ['shinzui', 'shinzuiBody', 'longSkills', 'database'] }),
   rec('自制心', '緑スキル', 1, '賢さを補い、掛かりにくくする。長距離、特にLoHの安定性を重視する構成で優先。', { sources: ['noteKyotoFront', 'noteKyotoEscape', 'noteNakayama', 'database'] }),
   rec('天才肌', '緑スキル', 2, '基礎賢さ1200以上の中・長距離で発動。賢さを補うが、条件を満たさなければ発動しない。', { conditionLabel: '基礎賢さ1200以上', sources: ['noteKyotoFront', 'noteKyotoEscape', 'database'] }),

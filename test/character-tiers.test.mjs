@@ -9,8 +9,8 @@ test('掲載Tierは当該開催の新しいnoteを実際の候補評価に使い
   for(const [id,board] of Object.entries(COURSE_TIERS)) {
     assert.equal(getCourseTier(COURSES.find(c=>c.id===id)),board);
     if(board.status!=='published')continue;
-    assert.equal(board.entries.length,10);
-    assert.equal(new Set(board.entries.map(e=>e.characterId)).size,10);
+    assert.equal(board.entries.length,11);
+    assert.equal(new Set(board.entries.map(e=>e.characterId)).size,11);
     assert.deepEqual([...new Set(board.entries.map(e=>e.tier))].sort(),[...TIER_ORDER].sort());
     assert.ok(board.sourceIds.some(key=>TIER_SOURCES[key].platform==='note'));
     assert.ok(new Set(board.sourceIds.map(key=>TIER_SOURCES[key].name)).size>=2);
